@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #f6f6f7;
+  --panel: #ffffff;
+  --ink: #121212;
+  --muted: #6d727c;
+  --line: #ececef;
+  --copper: #ff4d00;
+  --accent-from: #ff8a3d;
+  --accent-to: #ff3d00;
+  --moss: #1c1c1c;
+  --ok: #059669;
+  --warn: #d97706;
+  --danger: #e11d48;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-panel: var(--panel);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-copper: var(--copper);
+  --color-moss: var(--moss);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex), ui-monospace, monospace;
+}
+
+body {
+  background:
+    radial-gradient(900px 420px at 100% -10%, rgb(255 77 0 / 0.08), transparent 55%),
+    var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: #ffd0bc;
+}
+
+input,
+select,
+textarea {
+  accent-color: var(--copper);
+}
+
+.bg-accent-gradient {
+  background-image: linear-gradient(135deg, var(--accent-from), var(--accent-to));
+}
+
+@keyframes auction-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.auction-marquee-track {
+  animation: auction-marquee 36s linear infinite;
+}
+
+.auction-marquee:hover .auction-marquee-track,
+.auction-marquee:focus-within .auction-marquee-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auction-marquee-track {
+    animation: none;
+  }
+}
