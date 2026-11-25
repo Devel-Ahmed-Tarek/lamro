@@ -9,6 +9,8 @@ use App\Http\Resources\ProductResource;
 use App\Models\Auction;
 use App\Models\AuctionApplication;
 use App\Models\AuditLog;
+use App\Models\Brand;
+use App\Models\Category;
 use App\Models\CmsBanner;
 use App\Models\CmsPage;
 use App\Models\CompanyStockListing;
@@ -586,23 +588,53 @@ class PlatformController extends Controller
     public function toggleWatch(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'product_id' => ['required', 'integer', 'exists:products,id'],
+            'product_id' => ['nullable', 'integer', 'exists:products,id', 'required_without:slug'],
+            'slug' => ['nullable', 'string', 'required_without:product_id'],
         ]);
+
+        $productId = $data['product_id'] ?? null;
+        if (! $productId && ! empty($data['slug'])) {
+            $productId = Product::query()->where('slug', $data['slug'])->value('id');
+        }
+        abort_unless($productId, 404);
+
         $existing = Watchlist::query()
             ->where('user_id', $request->user()->id)
-            ->where('product_id', $data['product_id'])
+            ->where('product_id', $productId)
             ->first();
         if ($existing) {
             $existing->delete();
 
-            return response()->json(['data' => ['watching' => false]]);
+            return response()->json(['data' => ['watching' => false, 'product_id' => $productId]]);
         }
         Watchlist::query()->create([
             'user_id' => $request->user()->id,
-            'product_id' => $data['product_id'],
+            'product_id' => $productId,
         ]);
 
-        return response()->json(['data' => ['watching' => true]]);
+        return response()->json(['data' => ['watching' => true, 'product_id' => $productId]]);
+    }
+
+    public function publicTax(): JsonResponse
+    {
+        $tax = TaxSetting::current();
+
+        return response()->json([
+            'data' => [
+                'rate_bps' => (int) $tax->rate_bps,
+                'rate_percent' => round(((int) $tax->rate_bps) / 100, 2),
+                'currency' => $tax->currency,
+            ],
+        ]);
+    }
+
+    public function robots(): \Illuminate\Http\Response
+    {
+        $base = rtrim(explode(',', (string) config('app.frontend_url', config('app.url')))[0], '/');
+        $api = rtrim((string) config('app.url'), '/');
+        $body = "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /account\nDisallow: /checkout\nSitemap: {$base}/sitemap.xml\nSitemap: {$api}/api/v1/sitemap.xml\n";
+
+        return response($body, 200, ['Content-Type' => 'text/plain; charset=UTF-8']);
     }
 
     public function systemStatus(): JsonResponse
@@ -656,13 +688,25 @@ class PlatformController extends Controller
 
     public function sitemap(): \Illuminate\Http\Response
     {
-        $base = rtrim(config('app.frontend_url', config('app.url')), '/');
-        $urls = ['/', '/store', '/auctions', '/about', '/services', '/contact'];
+        $base = rtrim(explode(',', (string) config('app.frontend_url', config('app.url')))[0], '/');
+        $urls = ['/', '/store', '/auctions', '/about', '/services', '/contact', '/brands', '/categories', '/company-stock'];
         foreach (CmsPage::query()->where('status', 'published')->pluck('slug') as $slug) {
             $urls[] = '/legal/'.$slug;
         }
+        foreach (Product::query()->published()->pluck('slug') as $slug) {
+            $urls[] = '/store/'.$slug;
+        }
+        foreach (Brand::query()->where('is_active', true)->pluck('slug') as $slug) {
+            $urls[] = '/brands/'.$slug;
+        }
+        foreach (Category::query()->where('is_active', true)->pluck('slug') as $slug) {
+            $urls[] = '/categories/'.$slug;
+        }
+        foreach (Auction::query()->whereIn('status', ['live', 'scheduled'])->pluck('slug') as $slug) {
+            $urls[] = '/auctions/'.$slug;
+        }
         $xml = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
-        foreach ($urls as $url) {
+        foreach (array_unique($urls) as $url) {
             $xml .= '<url><loc>'.htmlspecialchars($base.$url, ENT_XML1).'</loc></url>';
         }
         $xml .= '</urlset>';

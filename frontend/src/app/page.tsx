@@ -1,8 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { AuctionMarquee } from "@/components/auction-marquee";
 import { ProductMarquee } from "@/components/product-marquee";
+import { SeoHead } from "@/components/seo-head";
 import { Frame } from "@/components/shell";
 import { Badge, ButtonLink, Plate, TestingBadge } from "@/components/ui";
 import { useEffect, useState } from "react";
@@ -29,6 +31,12 @@ export default function HomePage() {
 
   return (
     <Frame>
+      <SeoHead
+        title={t({ en: "Industrial electronics storefront and auctions" })}
+        description={t({ en: "Industrial electronics, spare parts, and tested components." })}
+        image="/hero-auction.jpg"
+        path="/"
+      />
       <section>
         <div className="grid overflow-hidden rounded-3xl bg-ink text-white shadow-[0_28px_70px_-28px_rgba(255,77,0,0.55)] lg:grid-cols-2">
           <div className="flex flex-col justify-between gap-8 p-6 sm:p-10">
@@ -53,7 +61,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="relative min-h-72">
-            <img src="/hero-auction.jpg" alt={t({ de: "Industrieelektronik auf dem Prüftisch", en: "Industrial electronics on the test bench" })} className="h-full min-h-72 w-full object-cover" />
+            <Image src="/hero-auction.jpg" alt={t({ de: "Industrieelektronik auf dem Prüftisch", en: "Industrial electronics on the test bench" })} fill className="object-cover" priority sizes="(max-width: 1024px) 100vw, 50vw" />
             {spotlight && spotlightProduct ? (
               <Link href={`/auctions/${spotlight.slug}`} className="absolute right-4 bottom-4 left-4 rounded-2xl bg-white p-4 text-ink shadow-[0_18px_40px_-16px_rgba(0,0,0,0.45)] sm:right-auto sm:w-72">
                 <div className="flex items-center justify-between text-xs">
@@ -70,17 +78,6 @@ export default function HomePage() {
       </section>
 
       {features.store ? <ProductMarquee /> : null}
-
-      <section className="mt-16">
-        <div className="mx-auto mb-8 max-w-xl text-center">
-          <p className="text-xs font-semibold tracking-[0.14em] text-copper uppercase">{t({ de: "Partner", en: "Partner" })}</p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight">{t({ de: "Partner-Auktionen — Coming soon", en: "Partner auctions — Coming soon" })}</h2>
-          <p className="mt-2 text-sm text-muted">{t({ de: "Später können freigegebene Firmen eigene Lose einstellen. Heute verkauft und versteigert nur Jala.", en: "Later, approved companies will list their own lots. Today only Jala sells and auctions." })}</p>
-        </div>
-        <div className="rounded-3xl border border-dashed border-line bg-white px-6 py-10 text-center text-sm text-muted">
-          {t({ de: "Externe Partner folgen in einer nächsten Phase.", en: "External partners follow in a later phase." })}
-        </div>
-      </section>
 
       <section className="mt-16">
         <div className="mx-auto mb-8 max-w-xl text-center">

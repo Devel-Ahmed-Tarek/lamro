@@ -1,0 +1,18 @@
+{
+  "name": "Jala",
+  "short_name": "Jala",
+  "description": "Industrial electronics storefront and auctions",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f4ef",
+  "theme_color": "#121212",
+  "lang": "de",
+  "icons": [
+    {
+      "src": "/hero-auction.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}

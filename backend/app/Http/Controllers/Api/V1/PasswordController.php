@@ -26,9 +26,16 @@ class PasswordController extends Controller
                 ['email' => $user->email],
                 ['token' => Hash::make($token), 'created_at' => now()],
             );
-            $this->notify->send($user, 'account_registered', ['reset_token' => $token]);
-            // Also log token for local/dev visibility
-            logger()->info('password.reset_token', ['email' => $user->email, 'token' => $token]);
+            $frontend = rtrim(explode(',', (string) config('app.frontend_url', config('app.url')))[0], '/');
+            $resetUrl = $frontend.'/reset-password?email='.urlencode($user->email).'&token='.urlencode($token);
+            $this->notify->send($user, 'password_reset', [
+                'name' => $user->name,
+                'reset_token' => $token,
+                'reset_url' => $resetUrl,
+            ]);
+            if (config('app.debug')) {
+                logger()->info('password.reset_token', ['email' => $user->email, 'reset_url' => $resetUrl]);
+            }
         }
 
         return response()->json(['data' => ['ok' => true, 'message' => 'If the email exists, a reset link was sent.']]);
@@ -44,6 +51,11 @@ class PasswordController extends Controller
 
         $row = DB::table('password_reset_tokens')->where('email', $data['email'])->first();
         if (! $row || ! Hash::check($data['token'], $row->token)) {
+            throw ValidationException::withMessages(['token' => ['Invalid or expired reset token.']]);
+        }
+
+        if ($row->created_at && now()->diffInMinutes($row->created_at) > 60) {
+            DB::table('password_reset_tokens')->where('email', $data['email'])->delete();
             throw ValidationException::withMessages(['token' => ['Invalid or expired reset token.']]);
         }
 

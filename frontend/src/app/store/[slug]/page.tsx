@@ -94,6 +94,7 @@ export default function ProductPage() {
     <Frame>
       <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
         {image ? (
+          // Remote catalog media may come from storage hosts outside the Next image allowlist.
           // eslint-disable-next-line @next/next/no-img-element
           <img src={image.url} alt="" className="min-h-72 w-full rounded-3xl object-cover" />
         ) : (

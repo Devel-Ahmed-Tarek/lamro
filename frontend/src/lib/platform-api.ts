@@ -39,6 +39,29 @@ export async function resetPassword(payload: { email: string; token: string; pas
   return api("/api/v1/auth/reset-password", { method: "POST", body: JSON.stringify(payload), auth: false });
 }
 
+export async function verifyEmail(email: string, token: string) {
+  return api("/api/v1/auth/verify-email", { method: "POST", body: JSON.stringify({ email, token }), auth: false });
+}
+
+export async function resendVerification() {
+  return api("/api/v1/auth/resend-verification", { method: "POST", body: "{}" });
+}
+
+export async function fetchPublicTax() {
+  return api<Envelope<{ rate_bps: number; rate_percent: number; currency: string }>>("/api/v1/tax", { auth: false });
+}
+
+export async function fetchWatchlist() {
+  return api<ListEnvelope<{ id: number; product: { id: number; slug: string; name: Record<string, string> } | null }>>("/api/v1/me/watchlist");
+}
+
+export async function toggleWatchlist(slug: string) {
+  return api<Envelope<{ watching: boolean; product_id: number }>>("/api/v1/me/watchlist/toggle", {
+    method: "POST",
+    body: JSON.stringify({ slug }),
+  });
+}
+
 export async function changePassword(current_password: string, password: string) {
   return api("/api/v1/auth/change-password", { method: "POST", body: JSON.stringify({ current_password, password }) });
 }

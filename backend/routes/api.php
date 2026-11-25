@@ -29,6 +29,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [AuthController::class, 'login']);
     Route::post('/auth/forgot-password', [PasswordController::class, 'forgot']);
     Route::post('/auth/reset-password', [PasswordController::class, 'reset']);
+    Route::post('/auth/verify-email', [AuthController::class, 'verifyEmail']);
 
     Route::get('/categories', [CategoryController::class, 'index']);
     Route::get('/categories/{slug}', [CategoryController::class, 'show']);
@@ -48,11 +49,14 @@ Route::prefix('v1')->group(function () {
     Route::get('/cms/pages/{slug}', [PlatformController::class, 'cmsPage']);
     Route::get('/cms/banners', [PlatformController::class, 'cmsBanners']);
     Route::get('/sitemap.xml', [PlatformController::class, 'sitemap']);
+    Route::get('/robots.txt', [PlatformController::class, 'robots']);
+    Route::get('/tax', [PlatformController::class, 'publicTax']);
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::post('/auth/change-password', [PasswordController::class, 'change']);
+        Route::post('/auth/resend-verification', [AuthController::class, 'resendVerification']);
         Route::post('/auth/two-factor', [PlatformController::class, 'twoFactorToggle']);
 
         Route::get('/addresses', [AddressController::class, 'index']);

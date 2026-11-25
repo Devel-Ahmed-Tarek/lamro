@@ -7,7 +7,7 @@ import { Field, Notice, PageIntro, fieldClass } from "@/components/ui";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/catalog";
 import { checkoutCart, fetchCart, fetchStripeConfig, type ApiCart, type ApiOrder } from "@/lib/commerce-api";
-import { fetchShippingMethods } from "@/lib/platform-api";
+import { fetchPublicTax, fetchShippingMethods } from "@/lib/platform-api";
 import { useStore } from "@/lib/store";
 
 export default function CheckoutPage() {
@@ -27,6 +27,7 @@ export default function CheckoutPage() {
   const [payMethod, setPayMethod] = useState<"bank_transfer" | "stripe">("stripe");
   const [stripeEnabled, setStripeEnabled] = useState(false);
   const [stripeDemo, setStripeDemo] = useState(true);
+  const [taxRateBps, setTaxRateBps] = useState(0);
 
   useEffect(() => {
     if (!ready) return;
@@ -43,6 +44,9 @@ export default function CheckoutPage() {
       setStripeDemo(response.data.demo);
       if (!response.data.enabled) setPayMethod("bank_transfer");
     }).catch(() => setPayMethod("bank_transfer"));
+    void fetchPublicTax()
+      .then((response) => setTaxRateBps(response.data.rate_bps))
+      .catch(() => setTaxRateBps(0));
   }, []);
 
   useEffect(() => {
@@ -114,6 +118,10 @@ export default function CheckoutPage() {
   const items = cart?.items ?? [];
   const selected = methods.find((method) => method.id === methodId);
   const shippingPrice = selected?.price ?? 0;
+  const discount = 0;
+  const net = (cart?.subtotal ?? 0) - discount + shippingPrice;
+  const taxPreview = Math.round((net * taxRateBps) / 10000);
+  const gross = net + taxPreview;
 
   return (
     <Frame>
@@ -160,13 +168,22 @@ export default function CheckoutPage() {
                   {t({ de: "Banküberweisung", en: "Bank transfer" })}
                 </label>
               </div>
+              {stripeDemo && stripeEnabled ? (
+                <p className="mt-2 text-xs text-muted">{t({ en: "Demo Stripe is for staging only and cannot complete live charges." })}</p>
+              ) : null}
             </fieldset>
             {error ? <p className="text-sm text-danger">{error}</p> : null}
           </div>
           <aside className="h-fit rounded-2xl bg-ink p-5 text-paper">
             <p className="text-sm text-white/60">{items.length} {t({ de: "Positionen", en: "lines" })}</p>
-            <p className="mt-4 text-2xl font-semibold">{formatMoney((cart?.subtotal ?? 0) + shippingPrice, locale)}</p>
-            <p className="mt-1 text-xs text-white/60">{t({ de: "zzgl. Steuer in der Rechnung", en: "plus tax on the invoice" })}</p>
+            <dl className="mt-4 space-y-2 text-sm">
+              <div className="flex justify-between gap-3"><dt className="text-white/60">{t({ en: "Subtotal" })}</dt><dd>{formatMoney(cart?.subtotal ?? 0, locale)}</dd></div>
+              {discount > 0 ? <div className="flex justify-between gap-3"><dt className="text-white/60">{t({ en: "Discount" })}</dt><dd>−{formatMoney(discount, locale)}</dd></div> : null}
+              <div className="flex justify-between gap-3"><dt className="text-white/60">{t({ en: "Shipping" })}</dt><dd>{formatMoney(shippingPrice, locale)}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-white/60">{t({ en: "Tax preview" })} ({(taxRateBps / 100).toFixed(1)}%)</dt><dd>{formatMoney(taxPreview, locale)}</dd></div>
+            </dl>
+            <p className="mt-4 text-2xl font-semibold">{formatMoney(gross, locale)}</p>
+            <p className="mt-1 text-xs text-white/60">{t({ en: "Final tax appears on the invoice." })}</p>
             <button disabled={busy} className="mt-6 w-full rounded-full bg-copper py-2.5 text-sm font-medium disabled:opacity-60">
               {busy ? "…" : payMethod === "stripe"
                 ? t({ de: "Mit Stripe bezahlen", en: "Pay with Stripe" })

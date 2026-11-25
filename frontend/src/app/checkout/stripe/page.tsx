@@ -61,6 +61,19 @@ function StripeCheckoutInner() {
     );
   }
 
+  if (demo && process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_ALLOW_STRIPE_DEMO !== "1") {
+    return (
+      <Frame>
+        <PageIntro
+          kicker="Stripe"
+          title={t({ en: "Demo checkout disabled" })}
+          lede={t({ en: "Demo Stripe is for staging only and cannot complete live charges." })}
+        />
+        <Link href="/checkout" className="mt-6 inline-block text-copper">{t({ en: "Back to checkout" })}</Link>
+      </Frame>
+    );
+  }
+
   if (cancelled) {
     return (
       <Frame>

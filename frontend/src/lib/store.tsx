@@ -14,6 +14,7 @@ import {
 import { pickCopy, type Copy, type Locale } from "@/lib/catalog";
 import { clearCartRequest, fetchCart, syncCart, upsertCartItem } from "@/lib/commerce-api";
 import { enrichCopy } from "@/lib/i18n/public-dict";
+import { fetchWatchlist, toggleWatchlist } from "@/lib/platform-api";
 
 export type Role = "customer" | "seller" | "admin";
 
@@ -114,12 +115,35 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const cartRef = useRef<CartLine[]>([]);
   cartRef.current = cart;
+  const watchRef = useRef<string[]>([]);
+  watchRef.current = watch;
 
   const pullServerCart = useCallback(async () => {
     if (!getToken()) return;
     const response = await fetchCart();
     setCart(cartFromApi(response.data.items));
   }, []);
+
+  const pullServerWatch = useCallback(async () => {
+    if (!getToken()) return;
+    const response = await fetchWatchlist();
+    const slugs = response.data
+      .map((row) => row.product?.slug)
+      .filter((slug): slug is string => Boolean(slug));
+    setWatch(slugs);
+  }, []);
+
+  const pushLocalWatchThenPull = useCallback(async (local: string[]) => {
+    if (!getToken()) return;
+    for (const slug of local) {
+      try {
+        await toggleWatchlist(slug);
+      } catch {
+        /* ignore missing products */
+      }
+    }
+    await pullServerWatch();
+  }, [pullServerWatch]);
 
   const pushLocalThenPull = useCallback(async (local: CartLine[]) => {
     if (!getToken()) return;
@@ -132,6 +156,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const saved = localStorage.getItem("jala-ui");
     let localCart: CartLine[] = [];
+    let localWatch: string[] = [];
     if (saved) {
       const parsed = JSON.parse(saved) as {
         locale?: Locale;
@@ -148,7 +173,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         localCart = parsed.cart;
         setCart(parsed.cart);
       }
-      if (parsed.watch) setWatch(parsed.watch);
+      if (parsed.watch) {
+        localWatch = parsed.watch;
+        setWatch(parsed.watch);
+      }
       if (parsed.features) setFeatures({ ...defaultFeatures, ...parsed.features });
     }
 
@@ -171,6 +199,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           } catch {
             /* keep local cart */
           }
+          try {
+            const server = await fetchWatchlist();
+            const serverSlugs = server.data
+              .map((row) => row.product?.slug)
+              .filter((slug): slug is string => Boolean(slug));
+            const missing = localWatch.filter((slug) => !serverSlugs.includes(slug));
+            if (missing.length) await pushLocalWatchThenPull(missing);
+            else setWatch(serverSlugs.length ? serverSlugs : localWatch);
+          } catch {
+            /* keep local watch */
+          }
         }
       })
       .catch(() => {
@@ -178,7 +217,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setAuthUser(null);
       })
       .finally(() => setReady(true));
-  }, [pushLocalThenPull]);
+  }, [pushLocalThenPull, pushLocalWatchThenPull]);
 
   useEffect(() => {
     if (!ready) return;
@@ -196,9 +235,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       } catch {
         /* ignore */
       }
+      try {
+        const local = watchRef.current;
+        const server = await fetchWatchlist();
+        const serverSlugs = server.data
+          .map((row) => row.product?.slug)
+          .filter((slug): slug is string => Boolean(slug));
+        const missing = local.filter((slug) => !serverSlugs.includes(slug));
+        if (missing.length) await pushLocalWatchThenPull(missing);
+        else setWatch(serverSlugs.length ? serverSlugs : local);
+      } catch {
+        /* keep local watch */
+      }
     }
     return user;
-  }, [pushLocalThenPull]);
+  }, [pushLocalThenPull, pushLocalWatchThenPull]);
 
   const loginAdmin = useCallback(async (email: string, password: string) => {
     const data = await loginRequest(email, password);
@@ -297,7 +348,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     refreshCart: pullServerCart,
     watch,
     toggleWatch: (slug) => {
-      setWatch((current) => (current.includes(slug) ? current.filter((item) => item !== slug) : [...current, slug]));
+      setWatch((current) => {
+        const next = current.includes(slug) ? current.filter((item) => item !== slug) : [...current, slug];
+        if (getToken() && authUser && !isAdminUser(authUser)) {
+          void toggleWatchlist(slug).catch(() => undefined);
+        }
+        return next;
+      });
     },
     features,
     toggleFeature: (key) => setFeatures((current) => ({ ...current, [key]: !current[key] })),

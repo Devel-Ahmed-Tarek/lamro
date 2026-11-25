@@ -111,6 +111,9 @@ class StripePaymentService
 
     public function completeDemo(Payment $payment, string $token, User $user): Order
     {
+        if (! $this->demoMode()) {
+            throw ValidationException::withMessages(['token' => ['Stripe demo checkout is disabled.']]);
+        }
         if ($payment->method !== 'stripe' || ! $payment->demo_token || ! hash_equals($payment->demo_token, $token)) {
             throw ValidationException::withMessages(['token' => ['Invalid demo payment token.']]);
         }

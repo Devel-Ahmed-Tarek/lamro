@@ -72,7 +72,15 @@ function StoreView() {
           </Link>
         ))}
       </div>
-      {!loading && list.length === 0 ? <p className="mt-8 text-muted">{t({ de: "Keine Artikel für diese Suche.", en: "No items match this search." })}</p> : null}
+      {!loading && list.length === 0 ? (
+        <div className="mt-8 rounded-3xl border border-dashed border-line bg-white px-6 py-10 text-center">
+          <p className="text-muted">{t({ de: "Keine Artikel für diese Suche.", en: "No items match this search." })}</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-3">
+            <ButtonLink href="/store">{t({ en: "Clear filters" })}</ButtonLink>
+            <ButtonLink href="/contact" variant="ghost">{t({ en: "Ask about stock" })}</ButtonLink>
+          </div>
+        </div>
+      ) : null}
     </Frame>
   );
 }

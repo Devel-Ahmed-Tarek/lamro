@@ -13,8 +13,8 @@ import { useStore } from "@/lib/store";
 export default function LoginPage() {
   const { t, loginAuth } = useStore();
   const router = useRouter();
-  const [email, setEmail] = useState("customer@jala.de");
-  const [password, setPassword] = useState("password");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -55,10 +55,12 @@ export default function LoginPage() {
           </Button>
         </form>
         <p className="mt-4 text-sm text-muted">
+          <Link href="/forgot-password" className="text-copper">{t({ en: "Forgot password?" })}</Link>
+        </p>
+        <p className="mt-2 text-sm text-muted">
           {t({ de: "Noch kein Konto?", en: "No account yet?" })}{" "}
           <Link href="/register" className="text-copper">{t({ de: "Registrieren", en: "Register" })}</Link>
         </p>
-        <p className="mt-2 text-xs text-muted">Admin: admin@jala.de / admin · Customer: customer@jala.de / password</p>
       </div>
     </Frame>
   );

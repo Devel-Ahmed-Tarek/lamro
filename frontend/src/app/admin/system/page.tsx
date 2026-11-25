@@ -32,6 +32,11 @@ export default function AdminSystemPage() {
   return (
     <AdminShell>
       <h1 className="text-3xl font-semibold tracking-tight">{t({ de: "System & Sicherung", en: "System & backup" })}</h1>
+      <p className="mt-3 max-w-2xl text-sm text-muted">
+        {t({
+          en: "Run a backup before major releases or migrations. Keep at least one recent copy off the app server.",
+        })}
+      </p>
       {status ? (
         <dl className="mt-6 grid gap-4 sm:grid-cols-3 text-sm">
           <div className="rounded-3xl border border-line bg-white p-4"><dt className="text-muted">{t({ de: "Anwendung", en: "App" })}</dt><dd className="mt-1 font-medium">{status.app}</dd></div>

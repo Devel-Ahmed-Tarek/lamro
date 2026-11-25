@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { fetchAuctions, formatEndsIn, type ApiAuction } from "@/lib/auction-api";
@@ -20,7 +21,7 @@ function Card({ auction, locale, label }: { auction: ApiAuction; locale: Locale;
 
   return (
     <Link href={`/auctions/${auction.slug}`} className="flex w-72 shrink-0 items-center gap-3 rounded-2xl border border-line bg-white p-3 shadow-[0_16px_40px_-24px_rgba(18,18,18,0.55)]">
-      <img src="/hero-auction.jpg" alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />
+      <Image src="/hero-auction.jpg" alt="" width={64} height={64} className="h-16 w-16 shrink-0 rounded-xl object-cover" />
       <span className="min-w-0">
         <span className="block text-xs font-medium text-copper">{label} · {formatEndsIn(auction.ends_in_seconds, locale)}</span>
         <span className="mt-1 block truncate font-medium">{t(product.name)}</span>

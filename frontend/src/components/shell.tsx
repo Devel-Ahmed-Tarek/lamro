@@ -1,8 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { CookieConsent } from "@/components/cookie-consent";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Dropdown, MenuButton, MenuLink } from "@/components/ui/dropdown";
 import { usePublicBrands, usePublicCategories } from "@/hooks/use-public-catalog";
@@ -114,7 +116,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 <span className="inline-flex items-center gap-2">
                   {profile.avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={profile.avatar} alt="" className="h-6 w-6 rounded-full object-cover" />
+                    <Image src={profile.avatar} alt="" width={24} height={24} className="h-6 w-6 rounded-full object-cover" unoptimized />
                   ) : (
                     <span className="bg-accent-gradient grid h-6 w-6 place-items-center rounded-full text-[10px] font-semibold text-white">
                       {(profile.name || "A").slice(0, 1).toUpperCase()}
@@ -219,6 +221,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           ))}
         </div>
       </footer>
+      <CookieConsent />
     </>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -20,7 +21,7 @@ function Card({ product, locale }: { product: Product; locale: Locale }) {
   return (
     <article className="flex w-64 shrink-0 flex-col rounded-2xl border border-line bg-white p-3 shadow-[0_16px_40px_-24px_rgba(18,18,18,0.55)]">
       <Link href={`/store/${product.slug}`}>
-        <img src="/hero-auction.jpg" alt="" className="h-40 w-full rounded-xl object-cover" />
+        <Image src="/hero-auction.jpg" alt="" width={256} height={160} className="h-40 w-full rounded-xl object-cover" />
       </Link>
       <Link href={`/store/${product.slug}`} className="mt-3 line-clamp-2 min-h-10 font-medium leading-5 hover:text-copper">{t(product.name)}</Link>
       <p className="mt-1 truncate text-xs text-muted">{product.manufacturer} · {product.partNumber}</p>
