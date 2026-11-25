@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
@@ -13,6 +14,8 @@ const nextConfig: NextConfig = {
     ],
   },
   turbopack: {
+    // Keep resolution inside frontend/ even when a parent lockfile exists.
+    root: path.resolve(__dirname),
     rules: {
       "*.css": {
         loaders: ["@tailwindcss/turbopack"],
