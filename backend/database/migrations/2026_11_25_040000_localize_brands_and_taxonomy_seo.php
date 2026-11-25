@@ -10,20 +10,34 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Brands: name becomes localized JSON + SEO/description fields.
         try {
             Schema::table('brands', function (Blueprint $table) {
                 $table->dropUnique(['name']);
             });
         } catch (\Throwable) {
-            // Index may already be absent on some environments.
+            // Index may already be absent.
+        }
+
+        // Widen name before writing JSON payloads.
+        try {
+            DB::statement('ALTER TABLE brands MODIFY name LONGTEXT NOT NULL');
+        } catch (\Throwable) {
+            // SQLite / already widened.
         }
 
         Schema::table('brands', function (Blueprint $table) {
-            $table->json('description')->nullable()->after('name');
-            $table->json('seo_title')->nullable()->after('description');
-            $table->json('seo_description')->nullable()->after('seo_title');
-            $table->json('seo_keywords')->nullable()->after('seo_description');
+            if (! Schema::hasColumn('brands', 'description')) {
+                $table->json('description')->nullable()->after('name');
+            }
+            if (! Schema::hasColumn('brands', 'seo_title')) {
+                $table->json('seo_title')->nullable()->after('description');
+            }
+            if (! Schema::hasColumn('brands', 'seo_description')) {
+                $table->json('seo_description')->nullable()->after('seo_title');
+            }
+            if (! Schema::hasColumn('brands', 'seo_keywords')) {
+                $table->json('seo_keywords')->nullable()->after('seo_description');
+            }
         });
 
         $brands = DB::table('brands')->select('id', 'name')->get();
@@ -31,11 +45,13 @@ return new class extends Migration
             $raw = $brand->name;
             if (is_string($raw) && str_starts_with(ltrim($raw), '{')) {
                 $decoded = json_decode($raw, true);
-                $map = is_array($decoded) ? Locales::normalize($decoded, (string) ($decoded['en'] ?? $decoded['de'] ?? reset($decoded) ?: '')) : Locales::normalize([], (string) $raw);
+                $label = is_array($decoded)
+                    ? (string) ($decoded['en'] ?? $decoded['de'] ?? reset($decoded) ?: '')
+                    : (string) $raw;
+                $map = is_array($decoded) ? Locales::normalize($decoded, $label) : Locales::normalize([], (string) $raw);
             } else {
                 $label = is_string($raw) ? $raw : '';
-                $map = Locales::normalize([], $label);
-                // Prefer keeping brand names identical across locales (proper nouns).
+                $map = Locales::normalize([]);
                 foreach (array_keys($map) as $locale) {
                     $map[$locale] = $label;
                 }
@@ -50,21 +66,28 @@ return new class extends Migration
             ]);
         }
 
-        // MySQL/MariaDB: convert string column to JSON if still string-typed.
         try {
             DB::statement('ALTER TABLE brands MODIFY name JSON NOT NULL');
         } catch (\Throwable) {
-            // SQLite keeps text JSON — fine with Eloquent array cast.
+            // SQLite keeps text JSON.
         }
 
         Schema::table('categories', function (Blueprint $table) {
-            $table->json('description')->nullable()->after('name');
-            $table->json('seo_title')->nullable()->after('description');
-            $table->json('seo_description')->nullable()->after('seo_title');
-            $table->json('seo_keywords')->nullable()->after('seo_description');
+            if (! Schema::hasColumn('categories', 'description')) {
+                $table->json('description')->nullable()->after('name');
+            }
+            if (! Schema::hasColumn('categories', 'seo_title')) {
+                $table->json('seo_title')->nullable()->after('description');
+            }
+            if (! Schema::hasColumn('categories', 'seo_description')) {
+                $table->json('seo_description')->nullable()->after('seo_title');
+            }
+            if (! Schema::hasColumn('categories', 'seo_keywords')) {
+                $table->json('seo_keywords')->nullable()->after('seo_description');
+            }
         });
 
-        $categories = DB::table('categories')->select('id', 'name')->get();
+        $categories = DB::table('categories')->select('id')->get();
         foreach ($categories as $category) {
             DB::table('categories')->where('id', $category->id)->update([
                 'description' => json_encode(Locales::normalize([]), JSON_UNESCAPED_UNICODE),
@@ -78,10 +101,18 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('brands', function (Blueprint $table) {
-            $table->dropColumn(['description', 'seo_title', 'seo_description', 'seo_keywords']);
+            foreach (['description', 'seo_title', 'seo_description', 'seo_keywords'] as $column) {
+                if (Schema::hasColumn('brands', $column)) {
+                    $table->dropColumn($column);
+                }
+            }
         });
         Schema::table('categories', function (Blueprint $table) {
-            $table->dropColumn(['description', 'seo_title', 'seo_description', 'seo_keywords']);
+            foreach (['description', 'seo_title', 'seo_description', 'seo_keywords'] as $column) {
+                if (Schema::hasColumn('categories', $column)) {
+                    $table->dropColumn($column);
+                }
+            }
         });
     }
 };
