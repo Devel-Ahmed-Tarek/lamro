@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\OrderResource;
 use App\Http\Resources\PaymentResource;
 use App\Http\Resources\ProductResource;
+use App\Models\Auction;
+use App\Models\AuctionApplication;
 use App\Models\AuditLog;
 use App\Models\CmsBanner;
 use App\Models\CmsPage;
+use App\Models\CompanyStockListing;
 use App\Models\Coupon;
 use App\Models\CreditNote;
 use App\Models\FeatureSetting;
@@ -18,6 +21,7 @@ use App\Models\Invoice;
 use App\Models\NotificationTemplate;
 use App\Models\Order;
 use App\Models\OrderReturn;
+use App\Models\Product;
 use App\Models\QuantityDiscountTier;
 use App\Models\ShippingMethod;
 use App\Models\SystemBackup;
@@ -264,6 +268,55 @@ class PlatformController extends Controller
             'data' => $logs->items(),
             'meta' => ['total' => $logs->total(), 'current_page' => $logs->currentPage(), 'last_page' => $logs->lastPage()],
         ]);
+    }
+
+    public function adminOverview(): JsonResponse
+    {
+        $paidStatuses = ['paid', 'processing', 'shipped', 'delivered'];
+        $openOrderStatuses = ['pending_payment', 'paid', 'processing', 'return_requested'];
+
+        $activity = AuditLog::query()
+            ->with('user:id,name,email')
+            ->latest()
+            ->limit(10)
+            ->get()
+            ->map(fn (AuditLog $log) => [
+                'id' => $log->id,
+                'action' => $log->action,
+                'href' => $this->overviewHrefForAction($log->action),
+                'actor' => $log->user?->name ?: $log->user?->email,
+                'created_at' => $log->created_at?->toIso8601String(),
+            ]);
+
+        return response()->json([
+            'data' => [
+                'products' => Product::query()->count(),
+                'live_auctions' => Auction::query()->where('status', 'live')->count(),
+                'company_stock_pending' => CompanyStockListing::query()->whereIn('status', ['new', 'contacted'])->count(),
+                'auction_applications_pending' => AuctionApplication::query()->where('status', 'pending')->count(),
+                'open_orders' => Order::query()->whereIn('status', $openOrderStatuses)->count(),
+                'customers' => User::query()->role('customer')->count(),
+                'open_inquiries' => Inquiry::query()->where('status', 'open')->count(),
+                'revenue_cents' => (int) Order::query()->whereIn('status', $paidStatuses)->sum('total_cents'),
+                'store_revenue_cents' => (int) Order::query()->where('source', 'store')->whereIn('status', $paidStatuses)->sum('total_cents'),
+                'auction_revenue_cents' => (int) Order::query()->where('source', 'auction')->whereIn('status', $paidStatuses)->sum('total_cents'),
+                'activity' => $activity,
+            ],
+        ]);
+    }
+
+    private function overviewHrefForAction(string $action): string
+    {
+        return match (true) {
+            str_starts_with($action, 'order.'), str_starts_with($action, 'return.') => '/admin/orders',
+            str_starts_with($action, 'payment.') => '/admin/payments',
+            str_starts_with($action, 'customer.') => '/admin/customers',
+            str_starts_with($action, 'feature.') => '/admin/features',
+            str_starts_with($action, 'auction.') => '/admin/auctions',
+            str_starts_with($action, 'credit_note.') => '/admin/invoices',
+            str_starts_with($action, 'system.') => '/admin/system',
+            default => '/admin/audit',
+        };
     }
 
     public function adminReports(): JsonResponse

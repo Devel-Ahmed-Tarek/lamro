@@ -114,6 +114,10 @@ Route::prefix('v1')->group(function () {
         });
 
         Route::prefix('admin')->group(function () {
+            Route::middleware('permission:admin.overview')->group(function () {
+                Route::get('/overview', [PlatformController::class, 'adminOverview']);
+            });
+
             Route::middleware('permission:admin.categories')->group(function () {
                 Route::get('/categories', [CategoryController::class, 'index']);
                 Route::post('/categories', [CategoryController::class, 'store']);
