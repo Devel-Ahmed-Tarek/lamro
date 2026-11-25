@@ -6,6 +6,10 @@ export type ApiCategory = {
   id: number;
   slug: string;
   name: Copy;
+  description?: Copy;
+  seo_title?: Copy;
+  seo_description?: Copy;
+  seo_keywords?: Copy;
   is_active: boolean;
   sort: number;
   count?: number;
@@ -14,11 +18,28 @@ export type ApiCategory = {
 
 export type ApiBrand = {
   id: number;
-  name: string;
+  name: Copy;
   slug: string;
+  description?: Copy;
+  seo_title?: Copy;
+  seo_description?: Copy;
+  seo_keywords?: Copy;
   is_active: boolean;
   count?: number;
   created_at?: string | null;
+};
+
+export type TaxonomyPayload = {
+  name: Copy;
+  description?: Copy;
+  seo_title?: Copy;
+  seo_description?: Copy;
+  seo_keywords?: Copy;
+  slug?: string;
+  is_active?: boolean;
+  sort?: number;
+  auto_translate?: boolean;
+  source_locale?: Locale;
 };
 
 export type ApiSpec = {
@@ -101,7 +122,9 @@ export function toCatalogProduct(product: ApiProduct): Product {
     slug: product.slug,
     name: product.name,
     summary: product.summary ?? { de: "", en: "" },
-    manufacturer: product.manufacturer ?? product.brand?.name ?? "",
+    manufacturer:
+      product.manufacturer ??
+      (product.brand?.name ? Object.values(product.brand.name).find((v) => typeof v === "string" && v.trim()) ?? "" : ""),
     partNumber: product.part_number ?? "",
     model: product.model ?? "",
     sku: product.sku ?? "",
@@ -141,14 +164,14 @@ export async function fetchAdminCategories() {
   return api<Envelope<ApiCategory[]>>("/api/v1/admin/categories");
 }
 
-export async function createCategoryRequest(payload: { name: Copy; slug?: string; is_active?: boolean; sort?: number }) {
+export async function createCategoryRequest(payload: TaxonomyPayload) {
   return api<Envelope<ApiCategory>>("/api/v1/admin/categories", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
-export async function updateCategoryRequest(id: number, payload: Partial<{ name: Copy; slug: string; is_active: boolean; sort: number }>) {
+export async function updateCategoryRequest(id: number, payload: Partial<TaxonomyPayload>) {
   return api<Envelope<ApiCategory>>(`/api/v1/admin/categories/${id}`, {
     method: "PUT",
     body: JSON.stringify(payload),
@@ -170,14 +193,22 @@ export async function fetchAdminBrands() {
   return api<Envelope<ApiBrand[]>>("/api/v1/admin/brands");
 }
 
-export async function createBrandRequest(payload: { name: string; slug?: string; is_active?: boolean }) {
+export async function fetchBrand(slug: string) {
+  return api<Envelope<ApiBrand>>(`/api/v1/brands/${encodeURIComponent(slug)}`, { auth: false });
+}
+
+export async function fetchCategory(slug: string) {
+  return api<Envelope<ApiCategory>>(`/api/v1/categories/${encodeURIComponent(slug)}`, { auth: false });
+}
+
+export async function createBrandRequest(payload: TaxonomyPayload) {
   return api<Envelope<ApiBrand>>("/api/v1/admin/brands", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
-export async function updateBrandRequest(id: number, payload: Partial<{ name: string; slug: string; is_active: boolean }>) {
+export async function updateBrandRequest(id: number, payload: Partial<TaxonomyPayload>) {
   return api<Envelope<ApiBrand>>(`/api/v1/admin/brands/${id}`, {
     method: "PUT",
     body: JSON.stringify(payload),
@@ -273,6 +304,29 @@ export async function aiProductTranslateRequest(payload: {
     "/api/v1/admin/ai/products/translate",
     { method: "POST", body: JSON.stringify(payload) },
   );
+}
+
+export async function aiCatalogTranslateRequest(payload: {
+  source_locale: Locale;
+  name?: Copy;
+  description?: Copy;
+  seo_title?: Copy;
+  seo_description?: Copy;
+  seo_keywords?: Copy;
+}) {
+  return api<
+    Envelope<{
+      name: Copy;
+      description: Copy;
+      seo_title: Copy;
+      seo_description: Copy;
+      seo_keywords: Copy;
+      provider: string;
+    }>
+  >("/api/v1/admin/ai/catalog/translate", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function createProductRequest(payload: ProductPayload) {

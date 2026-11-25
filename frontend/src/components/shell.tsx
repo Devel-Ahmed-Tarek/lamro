@@ -77,7 +77,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </Dropdown>
             <Dropdown plain label={t({ de: "Hersteller", en: "Brands" })}>
               {brands.map((brand) => (
-                <MenuLink key={brand.slug} href={`/store?brand=${encodeURIComponent(brand.name)}`}>{brand.name}</MenuLink>
+                <MenuLink key={brand.slug} href={`/brands/${brand.slug}`}>{t(brand.name)}</MenuLink>
               ))}
               <MenuLink href="/brands">{t({ de: "Alle Hersteller", en: "All brands" })}</MenuLink>
             </Dropdown>
@@ -159,7 +159,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 <MenuLink href="/categories">{t({ de: "Alle Kategorien", en: "All categories" })}</MenuLink>
               </Dropdown>
               <Dropdown label={t({ de: "Hersteller", en: "Brands" })}>
-                {brands.map((brand) => <MenuLink key={brand.slug} href={`/store?brand=${encodeURIComponent(brand.name)}`}>{brand.name}</MenuLink>)}
+                {brands.map((brand) => <MenuLink key={brand.slug} href={`/brands/${brand.slug}`}>{t(brand.name)}</MenuLink>)}
                 <MenuLink href="/brands">{t({ de: "Alle Hersteller", en: "All brands" })}</MenuLink>
               </Dropdown>
               <Dropdown label={t({ de: "Unternehmen", en: "Company" })}>

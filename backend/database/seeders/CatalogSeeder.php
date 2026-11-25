@@ -46,13 +46,33 @@ class CatalogSeeder extends Seeder
         ];
 
         foreach ($categories as $category) {
-            Category::query()->updateOrCreate(['slug' => $category['slug']], $category + ['is_active' => true]);
+            Category::query()->updateOrCreate(
+                ['slug' => $category['slug']],
+                $category + [
+                    'description' => $category['description'] ?? [],
+                    'seo_title' => $category['seo_title'] ?? [],
+                    'seo_description' => $category['seo_description'] ?? [],
+                    'seo_keywords' => $category['seo_keywords'] ?? [],
+                    'is_active' => true,
+                ],
+            );
         }
 
         foreach (['Siemens', 'ABB', 'Schneider Electric', 'Allen-Bradley', 'Fanuc', 'Lenze'] as $brandName) {
+            $name = [
+                'ar' => $brandName, 'de' => $brandName, 'en' => $brandName, 'fr' => $brandName, 'it' => $brandName,
+                'es' => $brandName, 'tr' => $brandName, 'nl' => $brandName, 'pl' => $brandName, 'pt' => $brandName,
+            ];
             Brand::query()->updateOrCreate(
                 ['slug' => Str::slug($brandName)],
-                ['name' => $brandName, 'is_active' => true],
+                [
+                    'name' => $name,
+                    'description' => [],
+                    'seo_title' => [],
+                    'seo_description' => [],
+                    'seo_keywords' => [],
+                    'is_active' => true,
+                ],
             );
         }
 
@@ -238,7 +258,7 @@ class CatalogSeeder extends Seeder
 
         foreach ($products as $index => $item) {
             $category = Category::query()->where('slug', $item['category'])->firstOrFail();
-            $brand = Brand::query()->where('name', $item['brand'])->firstOrFail();
+            $brand = Brand::query()->where('slug', Str::slug($item['brand']))->firstOrFail();
 
             $product = Product::query()->updateOrCreate(
                 ['slug' => $item['slug']],

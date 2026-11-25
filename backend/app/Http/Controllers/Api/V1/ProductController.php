@@ -40,7 +40,11 @@ class ProductController extends Controller
                     ->orWhereRaw('LOWER(serial) LIKE ?', [$like])
                     ->orWhereRaw("LOWER(json_extract(name, '$.en')) LIKE ?", [$like])
                     ->orWhereRaw("LOWER(json_extract(name, '$.de')) LIKE ?", [$like])
-                    ->orWhereHas('brand', fn ($b) => $b->whereRaw('LOWER(name) LIKE ?', [$like]));
+                    ->orWhereHas('brand', function ($b) use ($like) {
+                        $b->whereRaw("LOWER(json_extract(name, '$.en')) LIKE ?", [$like])
+                            ->orWhereRaw("LOWER(json_extract(name, '$.de')) LIKE ?", [$like])
+                            ->orWhereRaw('LOWER(slug) LIKE ?', [$like]);
+                    });
             });
         }
 
@@ -50,7 +54,11 @@ class ProductController extends Controller
 
         if ($brand = $request->query('brand')) {
             $query->whereHas('brand', function ($b) use ($brand) {
-                $b->where('name', $brand)->orWhere('slug', Str::slug((string) $brand));
+                $slug = Str::slug((string) $brand);
+                $b->where('slug', $brand)
+                    ->orWhere('slug', $slug)
+                    ->orWhereRaw("LOWER(json_extract(name, '$.en')) = ?", [mb_strtolower((string) $brand)])
+                    ->orWhereRaw("LOWER(json_extract(name, '$.de')) = ?", [mb_strtolower((string) $brand)]);
             });
         }
 

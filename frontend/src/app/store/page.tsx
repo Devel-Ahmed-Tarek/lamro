@@ -38,7 +38,7 @@ function StoreView() {
       <PageIntro kicker="Shop" title={t({ de: "Lagerware mit festem Preis.", en: "Stock with a fixed price." })} lede={t({ de: "Nur Artikel von Jala. Auktionen fremder Firmen erscheinen hier nicht.", en: "Jala items only. Other companies’ auctions do not appear here." })} />
       <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap">
         <SelectMenu className="lg:w-52" value={category} onChange={(value) => router.push(value ? `/store?category=${value}` : "/store")} options={[{ value: "", label: t({ de: "Alle Kategorien", en: "All categories" }) }, ...categories.map((item) => ({ value: item.slug, label: t(item.name) }))]} />
-        <SelectMenu className="lg:w-52" value={brand} onChange={(value) => router.push(value ? `/store?brand=${encodeURIComponent(value)}` : "/store")} options={[{ value: "", label: t({ de: "Alle Hersteller", en: "All brands" }) }, ...brands.map((item) => ({ value: item.name, label: item.name }))]} />
+        <SelectMenu className="lg:w-52" value={brand} onChange={(value) => router.push(value ? `/store?brand=${encodeURIComponent(value)}` : "/store")} options={[{ value: "", label: t({ de: "Alle Hersteller", en: "All brands" }) }, ...brands.map((item) => ({ value: item.slug, label: t(item.name) }))]} />
         <SelectMenu<Condition | ""> className="lg:w-48" value={condition} onChange={setCondition} options={[
           { value: "", label: t({ de: "Jeder Zustand", en: "Any condition" }) },
           { value: "new", label: t({ de: "Neu", en: "New" }) },

@@ -1,11 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/admin-gate";
 import { AdminShell } from "@/components/admin-shell";
 import { DataTable } from "@/components/data-table";
-import { Button } from "@/components/ui/button";
-import { Field, fieldClass } from "@/components/ui";
+import { TaxonomyForm } from "@/components/taxonomy-form";
 import { ApiError } from "@/lib/api";
 import {
   bulkDeleteBrandsRequest,
@@ -20,11 +20,12 @@ import { useStore } from "@/lib/store";
 export default function AdminBrandsPage() {
   const { t, locale } = useStore();
   const [items, setItems] = useState<ApiBrand[]>([]);
-  const [name, setName] = useState("");
   const [editing, setEditing] = useState<ApiBrand | null>(null);
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -43,47 +44,88 @@ export default function AdminBrandsPage() {
     void load();
   }, [load]);
 
-  async function create(event: React.FormEvent) {
-    event.preventDefault();
-    setError("");
-    try {
-      await createBrandRequest({ name });
-      setName("");
-      setNotice(t({ de: "Hersteller angelegt.", en: "Brand created." }));
-      await load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t({ de: "Anlegen fehlgeschlagen.", en: "Create failed." }));
-    }
-  }
-
-  async function saveEdit(event: React.FormEvent) {
-    event.preventDefault();
-    if (!editing) return;
-    try {
-      await updateBrandRequest(editing.id, { name: editing.name, is_active: editing.is_active });
-      setEditing(null);
-      setNotice(t({ de: "Hersteller gespeichert.", en: "Brand saved." }));
-      await load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t({ de: "Aktualisierung fehlgeschlagen.", en: "Update failed." }));
-    }
-  }
-
   return (
     <AdminShell>
       <AdminGate permission="admin.brands">
-        <h1 className="text-3xl font-semibold tracking-tight">{t({ de: "Hersteller", en: "Brands" })}</h1>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">{t({ de: "Hersteller", en: "Brands" })}</h1>
+            <p className="mt-2 text-sm text-muted">
+              {t({
+                de: "Name, Beschreibung und SEO in einer Sprache — Rest automatisch.",
+                en: "Name, description and SEO in one language — the rest automatically.",
+              })}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="rounded-2xl bg-ink px-4 py-2 text-sm text-white"
+            onClick={() => {
+              setEditing(null);
+              setCreating(true);
+            }}
+          >
+            {t({ de: "Anlegen", en: "Create" })}
+          </button>
+        </div>
         {notice ? <p className="mt-3 text-sm text-moss">{notice}</p> : null}
         {error ? <p className="mt-3 text-sm text-copper">{error}</p> : null}
 
-        <form onSubmit={create} className="mt-6 flex max-w-xl flex-wrap items-end gap-3 rounded-3xl border border-line bg-white p-5">
-          <div className="min-w-56 flex-1">
-            <Field label={t({ de: "Name", en: "Name" })}>
-              <input required className={fieldClass} value={name} onChange={(e) => setName(e.target.value)} />
-            </Field>
+        {creating || editing ? (
+          <div className="mt-6 max-w-3xl">
+            <TaxonomyForm
+              key={editing?.id ?? "new"}
+              mode={editing ? "edit" : "create"}
+              busy={busy}
+              initial={
+                editing
+                  ? {
+                      name: editing.name,
+                      description: editing.description,
+                      seo_title: editing.seo_title,
+                      seo_description: editing.seo_description,
+                      seo_keywords: editing.seo_keywords,
+                      slug: editing.slug,
+                      is_active: editing.is_active,
+                    }
+                  : undefined
+              }
+              onCancel={() => {
+                setCreating(false);
+                setEditing(null);
+              }}
+              onSubmit={async (value) => {
+                setBusy(true);
+                setError("");
+                try {
+                  const payload = {
+                    name: value.name,
+                    description: value.description,
+                    seo_title: value.seo_title,
+                    seo_description: value.seo_description,
+                    seo_keywords: value.seo_keywords,
+                    slug: value.slug || undefined,
+                    is_active: value.is_active,
+                    auto_translate: value.auto_translate,
+                    source_locale: value.source_locale,
+                  };
+                  if (editing) {
+                    await updateBrandRequest(editing.id, payload);
+                    setNotice(t({ de: "Hersteller gespeichert.", en: "Brand saved." }));
+                  } else {
+                    await createBrandRequest(payload);
+                    setNotice(t({ de: "Hersteller angelegt.", en: "Brand created." }));
+                  }
+                  setCreating(false);
+                  setEditing(null);
+                  await load();
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            />
           </div>
-          <Button type="submit">{t({ de: "Anlegen", en: "Create" })}</Button>
-        </form>
+        ) : null}
 
         {loading ? <p className="mt-6 text-sm text-muted">{t({ de: "Wird geladen…", en: "Loading…" })}</p> : null}
 
@@ -92,8 +134,11 @@ export default function AdminBrandsPage() {
             rows={items}
             rowKey={(row) => row.id}
             defaultSortId="name"
-            getSearchText={(row) => `${row.name} ${row.slug}`}
-            onEdit={(row) => setEditing({ ...row })}
+            getSearchText={(row) => `${t(row.name)} ${row.slug}`}
+            onEdit={(row) => {
+              setCreating(false);
+              setEditing({ ...row, name: { ...row.name } });
+            }}
             onDelete={async (row) => {
               await hideBrandRequest(row.id);
               setNotice(t({ de: "Hersteller ausgeblendet.", en: "Brand hidden." }));
@@ -109,8 +154,15 @@ export default function AdminBrandsPage() {
                 id: "name",
                 header: { de: "Name", en: "Name" },
                 sort: "alpha",
-                getValue: (row) => row.name,
-                cell: (row) => <span className="font-medium">{row.name}</span>,
+                getValue: (row) => t(row.name),
+                cell: (row) => (
+                  <span className="font-medium">
+                    {t(row.name)}{" "}
+                    <Link href={`/brands/${row.slug}`} className="text-xs text-copper">
+                      ↗
+                    </Link>
+                  </span>
+                ),
               },
               {
                 id: "slug",
@@ -130,7 +182,7 @@ export default function AdminBrandsPage() {
                 id: "status",
                 header: { de: "Status", en: "Status" },
                 sort: "alpha",
-                getValue: (row) => (row.is_active ? "aktiv" : "ausgeblendet"),
+                getValue: (row) => (row.is_active ? "active" : "hidden"),
                 cell: (row) => (row.is_active ? t({ de: "aktiv", en: "active" }) : t({ de: "ausgeblendet", en: "hidden" })),
               },
               {
@@ -138,28 +190,12 @@ export default function AdminBrandsPage() {
                 header: { de: "Erstellt", en: "Created" },
                 sort: "date",
                 getValue: (row) => row.created_at,
-                cell: (row) => (row.created_at ? new Date(row.created_at).toLocaleString(locale === "de" ? "de-DE" : "en-GB") : "—"),
+                cell: (row) =>
+                  row.created_at ? new Date(row.created_at).toLocaleString(locale === "de" ? "de-DE" : locale === "ar" ? "ar" : "en-GB") : "—",
               },
             ]}
           />
         </div>
-
-        {editing ? (
-          <form onSubmit={saveEdit} className="mt-6 max-w-xl space-y-3 rounded-3xl border border-line bg-white p-5">
-            <h2 className="font-semibold">{t({ de: "Bearbeiten", en: "Edit" })}</h2>
-            <Field label={t({ de: "Name", en: "Name" })}>
-              <input className={fieldClass} value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
-            </Field>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={editing.is_active} onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} />
-              {t({ de: "Aktiv", en: "Active" })}
-            </label>
-            <div className="flex gap-2">
-              <Button type="submit">{t({ de: "Speichern", en: "Save" })}</Button>
-              <Button type="button" variant="ghost" onClick={() => setEditing(null)}>{t({ de: "Abbrechen", en: "Cancel" })}</Button>
-            </div>
-          </form>
-        ) : null}
       </AdminGate>
     </AdminShell>
   );

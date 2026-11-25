@@ -58,4 +58,23 @@ class AiProductController extends Controller
 
         return response()->json(['data' => $translated]);
     }
+
+    public function translateTaxonomy(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'source_locale' => ['nullable', 'string', 'in:'.implode(',', Locales::all())],
+            'name' => ['nullable', 'array'],
+            'description' => ['nullable', 'array'],
+            'seo_title' => ['nullable', 'array'],
+            'seo_description' => ['nullable', 'array'],
+            'seo_keywords' => ['nullable', 'array'],
+        ]);
+
+        $translated = $this->ai->translateTaxonomyCopy(
+            $data,
+            $data['source_locale'] ?? 'en',
+        );
+
+        return response()->json(['data' => $translated]);
+    }
 }

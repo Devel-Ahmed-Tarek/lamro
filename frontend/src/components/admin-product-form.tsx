@@ -449,7 +449,7 @@ export function AdminProductForm({ product }: { product?: ApiProduct | null }) {
             <select className={fieldClass} value={form.brand_id} onChange={(e) => patch("brand_id", e.target.value)}>
               <option value="">—</option>
               {brands.map((item) => (
-                <option key={item.id} value={item.id}>{item.name}</option>
+                <option key={item.id} value={item.id}>{t(item.name)}</option>
               ))}
             </select>
           </Field>

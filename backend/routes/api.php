@@ -31,7 +31,9 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/reset-password', [PasswordController::class, 'reset']);
 
     Route::get('/categories', [CategoryController::class, 'index']);
+    Route::get('/categories/{slug}', [CategoryController::class, 'show']);
     Route::get('/brands', [BrandController::class, 'index']);
+    Route::get('/brands/{slug}', [BrandController::class, 'show']);
     Route::get('/products', [ProductController::class, 'index']);
     Route::get('/products/{slug}', [ProductController::class, 'show']);
     Route::get('/auctions', [AuctionController::class, 'index']);
@@ -149,6 +151,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('/ai/products/config', [AiProductController::class, 'config']);
                 Route::post('/ai/products/draft', [AiProductController::class, 'draft']);
                 Route::post('/ai/products/translate', [AiProductController::class, 'translate']);
+                Route::post('/ai/catalog/translate', [AiProductController::class, 'translateTaxonomy']);
             });
 
             Route::middleware('permission:admin.inventory')->group(function () {

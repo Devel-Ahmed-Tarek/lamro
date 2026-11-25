@@ -41,7 +41,7 @@ class ProductResource extends JsonResource
             'brand' => new BrandResource($this->whenLoaded('brand')),
             'category_id' => $this->category_id,
             'brand_id' => $this->brand_id,
-            'manufacturer' => $this->whenLoaded('brand', fn () => $this->brand?->name),
+            'manufacturer' => $this->whenLoaded('brand', fn () => $this->brand?->label()),
             'category_slug' => $this->whenLoaded('category', fn () => $this->category?->slug),
             'specs' => ProductSpecResource::collection($this->whenLoaded('specs')),
             'media' => ProductMediaResource::collection($this->whenLoaded('media')),

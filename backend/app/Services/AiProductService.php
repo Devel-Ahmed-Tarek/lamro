@@ -124,6 +124,190 @@ class AiProductService
         ];
     }
 
+    /**
+     * Translate brand/category copy + SEO fields into all locales.
+     *
+     * @param  array{
+     *   name?: array<string, string>,
+     *   description?: array<string, string>,
+     *   seo_title?: array<string, string>,
+     *   seo_description?: array<string, string>,
+     *   seo_keywords?: array<string, string>
+     * }  $payload
+     * @return array{
+     *   name: array<string, string>,
+     *   description: array<string, string>,
+     *   seo_title: array<string, string>,
+     *   seo_description: array<string, string>,
+     *   seo_keywords: array<string, string>,
+     *   provider: string
+     * }
+     */
+    public function translateTaxonomyCopy(array $payload, string $sourceLocale = 'en'): array
+    {
+        $sourceLocale = Locales::isValid($sourceLocale) ? $sourceLocale : Locales::fallback();
+        $name = Locales::normalize($payload['name'] ?? []);
+        $description = Locales::normalize($payload['description'] ?? []);
+        $seoTitle = Locales::normalize($payload['seo_title'] ?? []);
+        $seoDescription = Locales::normalize($payload['seo_description'] ?? []);
+        $seoKeywords = Locales::normalize($payload['seo_keywords'] ?? []);
+
+        $sourceName = Locales::pick($name, $sourceLocale);
+        $sourceDescription = Locales::pick($description, $sourceLocale);
+        $sourceSeoTitle = Locales::pick($seoTitle, $sourceLocale);
+        $sourceSeoDescription = Locales::pick($seoDescription, $sourceLocale);
+        $sourceSeoKeywords = Locales::pick($seoKeywords, $sourceLocale);
+
+        if ($sourceName === '' && $sourceDescription === '' && $sourceSeoTitle === '') {
+            throw ValidationException::withMessages(['name' => ['Source text missing for translation.']]);
+        }
+
+        $translated = match ($this->provider()) {
+            'groq', 'gemini', 'openai' => $this->translateTaxonomyViaLlm(
+                $this->provider(),
+                $sourceLocale,
+                $sourceName,
+                $sourceDescription,
+                $sourceSeoTitle,
+                $sourceSeoDescription,
+                $sourceSeoKeywords,
+            ),
+            default => $this->translateTaxonomyDemo(
+                $sourceLocale,
+                $sourceName,
+                $sourceDescription,
+                $sourceSeoTitle,
+                $sourceSeoDescription,
+                $sourceSeoKeywords,
+            ),
+        };
+
+        return [
+            'name' => Locales::normalize($translated['name'] ?? [], $sourceName),
+            'description' => Locales::normalize($translated['description'] ?? [], $sourceDescription),
+            'seo_title' => Locales::normalize($translated['seo_title'] ?? [], $sourceSeoTitle),
+            'seo_description' => Locales::normalize($translated['seo_description'] ?? [], $sourceSeoDescription),
+            'seo_keywords' => Locales::normalize($translated['seo_keywords'] ?? [], $sourceSeoKeywords),
+            'provider' => $this->provider(),
+        ];
+    }
+
+    /**
+     * @return array{
+     *   name: array<string, string>,
+     *   description: array<string, string>,
+     *   seo_title: array<string, string>,
+     *   seo_description: array<string, string>,
+     *   seo_keywords: array<string, string>
+     * }
+     */
+    private function translateTaxonomyDemo(
+        string $sourceLocale,
+        string $sourceName,
+        string $sourceDescription,
+        string $sourceSeoTitle,
+        string $sourceSeoDescription,
+        string $sourceSeoKeywords,
+    ): array {
+        $name = Locales::normalize([]);
+        $description = Locales::normalize([]);
+        $seoTitle = Locales::normalize([]);
+        $seoDescription = Locales::normalize([]);
+        $seoKeywords = Locales::normalize([]);
+        foreach (Locales::all() as $locale) {
+            // Brand/category names are often proper nouns — keep identical unless empty.
+            $name[$locale] = $sourceName;
+            $prefix = $locale === $sourceLocale ? '' : '['.$locale.'] ';
+            $description[$locale] = $sourceDescription === '' ? '' : $prefix.$sourceDescription;
+            $seoTitle[$locale] = $sourceSeoTitle === '' ? '' : $prefix.$sourceSeoTitle;
+            $seoDescription[$locale] = $sourceSeoDescription === '' ? '' : $prefix.$sourceSeoDescription;
+            $seoKeywords[$locale] = $sourceSeoKeywords === '' ? '' : $prefix.$sourceSeoKeywords;
+        }
+
+        return [
+            'name' => $name,
+            'description' => $description,
+            'seo_title' => $seoTitle,
+            'seo_description' => $seoDescription,
+            'seo_keywords' => $seoKeywords,
+        ];
+    }
+
+    /**
+     * @return array{
+     *   name: array<string, string>,
+     *   description: array<string, string>,
+     *   seo_title: array<string, string>,
+     *   seo_description: array<string, string>,
+     *   seo_keywords: array<string, string>
+     * }
+     */
+    private function translateTaxonomyViaLlm(
+        string $provider,
+        string $sourceLocale,
+        string $sourceName,
+        string $sourceDescription,
+        string $sourceSeoTitle,
+        string $sourceSeoDescription,
+        string $sourceSeoKeywords,
+    ): array {
+        $locales = Locales::all();
+        $prompt = json_encode([
+            'task' => 'Translate catalog taxonomy (brand or category) for an industrial electronics storefront. Keep brand proper nouns recognizable; localize descriptive SEO text naturally (not word-for-word). Return JSON only.',
+            'source_locale' => $sourceLocale,
+            'target_locales' => $locales,
+            'name' => $sourceName,
+            'description' => $sourceDescription,
+            'seo_title' => $sourceSeoTitle,
+            'seo_description' => $sourceSeoDescription,
+            'seo_keywords' => $sourceSeoKeywords,
+            'schema' => [
+                'name' => array_fill_keys($locales, 'string'),
+                'description' => array_fill_keys($locales, 'string'),
+                'seo_title' => array_fill_keys($locales, 'string'),
+                'seo_description' => array_fill_keys($locales, 'string'),
+                'seo_keywords' => array_fill_keys($locales, 'string'),
+            ],
+        ], JSON_UNESCAPED_UNICODE);
+
+        try {
+            $decoded = match ($provider) {
+                'gemini' => $this->geminiJson((string) $prompt),
+                'groq' => $this->chatJson(
+                    'https://api.groq.com/openai/v1/chat/completions',
+                    $this->apiKey('groq'),
+                    (string) config('services.ai.groq_model', 'llama-3.1-8b-instant'),
+                    (string) $prompt,
+                ),
+                default => $this->chatJson(
+                    'https://api.openai.com/v1/chat/completions',
+                    $this->apiKey('openai'),
+                    (string) config('services.ai.openai_model', 'gpt-4o-mini'),
+                    (string) $prompt,
+                ),
+            };
+        } catch (\Throwable $e) {
+            Log::warning('ai.taxonomy_translate_failed', ['error' => $e->getMessage()]);
+
+            return $this->translateTaxonomyDemo(
+                $sourceLocale,
+                $sourceName,
+                $sourceDescription,
+                $sourceSeoTitle,
+                $sourceSeoDescription,
+                $sourceSeoKeywords,
+            );
+        }
+
+        return [
+            'name' => Locales::normalize($decoded['name'] ?? []),
+            'description' => Locales::normalize($decoded['description'] ?? []),
+            'seo_title' => Locales::normalize($decoded['seo_title'] ?? []),
+            'seo_description' => Locales::normalize($decoded['seo_description'] ?? []),
+            'seo_keywords' => Locales::normalize($decoded['seo_keywords'] ?? []),
+        ];
+    }
+
     /** @return array<string, mixed> */
     private function draftDemo(string $description, string $sourceLocale): array
     {
