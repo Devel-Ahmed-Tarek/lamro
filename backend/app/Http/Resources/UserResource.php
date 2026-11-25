@@ -23,6 +23,7 @@ class UserResource extends JsonResource
             'country' => $this->country,
             'roles' => $this->getRoleNames()->values(),
             'permissions' => $this->getAllPermissions()->pluck('name')->values(),
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

@@ -77,6 +77,7 @@ export type ApiInvoice = {
   tax_rate_bps: number;
   snapshot?: Record<string, unknown>;
   issued_at: string | null;
+  created_at?: string | null;
   order?: ApiOrder;
 };
 

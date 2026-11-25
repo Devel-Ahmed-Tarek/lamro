@@ -1,12 +1,15 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/admin-gate";
 import { AdminShell } from "@/components/admin-shell";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { DataTable } from "@/components/data-table";
+import { ButtonLink } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
 import {
+  bulkDeleteProductsRequest,
+  deleteProductRequest,
   fetchAdminProducts,
   publishProductRequest,
   unpublishProductRequest,
@@ -17,10 +20,11 @@ import { useStore } from "@/lib/store";
 
 export default function AdminProducts() {
   const { t, locale } = useStore();
+  const router = useRouter();
   const [items, setItems] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [busyId, setBusyId] = useState<number | null>(null);
+  const [notice, setNotice] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -39,22 +43,6 @@ export default function AdminProducts() {
     void load();
   }, [load]);
 
-  async function togglePublish(product: ApiProduct) {
-    setBusyId(product.id);
-    setError("");
-    try {
-      const response =
-        product.status === "published"
-          ? await unpublishProductRequest(product.id)
-          : await publishProductRequest(product.id);
-      setItems((current) => current.map((item) => (item.id === product.id ? response.data : item)));
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t({ de: "Aktion fehlgeschlagen.", en: "Action failed." }));
-    } finally {
-      setBusyId(null);
-    }
-  }
-
   return (
     <AdminShell>
       <AdminGate permission="admin.products">
@@ -62,44 +50,90 @@ export default function AdminProducts() {
           <h1 className="text-3xl font-semibold tracking-tight">{t({ de: "Artikel", en: "Products" })}</h1>
           <ButtonLink href="/admin/products/new">{t({ de: "Artikel anlegen", en: "Create product" })}</ButtonLink>
         </div>
+        {notice ? <p className="mt-3 text-sm text-ok">{notice}</p> : null}
+        {error ? <p className="mt-3 text-sm text-copper">{error}</p> : null}
+        {loading ? <p className="mt-6 text-sm text-muted">{t({ de: "Wird geladen…", en: "Loading…" })}</p> : null}
 
-        {error ? <p className="mt-4 text-sm text-copper">{error}</p> : null}
-        {loading ? <p className="mt-6 text-sm text-muted">Loading…</p> : null}
-
-        <ul className="mt-6 divide-y divide-line rounded-3xl border border-line bg-white text-sm">
-          {items.map((product) => (
-            <li key={product.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-              <div className="min-w-0">
-                <p className="font-medium">{t(product.name)}</p>
-                <p className="font-mono text-xs text-muted">
-                  {product.part_number || "—"} · {product.sku || "no SKU"} · {product.status}
-                </p>
-                <p className="mt-1 text-xs text-muted">
-                  {formatMoney(product.price, locale)} · {product.available_stock}/{product.total_stock}{" "}
-                  {t({ de: "verfügbar", en: "available" })}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Link href={`/admin/products/${product.id}`} className="rounded-lg border border-line px-3 py-1.5 text-sm hover:border-ink">
-                  {t({ de: "Bearbeiten", en: "Edit" })}
-                </Link>
-                <Button
-                  size="sm"
-                  variant={product.status === "published" ? "secondary" : "accent"}
-                  disabled={busyId === product.id}
-                  onClick={() => void togglePublish(product)}
-                >
-                  {product.status === "published"
-                    ? t({ de: "Unpublish", en: "Unpublish" })
-                    : t({ de: "Publish", en: "Publish" })}
-                </Button>
-              </div>
-            </li>
-          ))}
-          {!loading && items.length === 0 ? (
-            <li className="px-4 py-8 text-muted">{t({ de: "Keine Artikel.", en: "No products." })}</li>
-          ) : null}
-        </ul>
+        <div className="mt-6">
+          <DataTable
+            rows={items}
+            rowKey={(row) => row.id}
+            defaultSortId="name"
+            getSearchText={(row) => `${t(row.name)} ${row.part_number ?? ""} ${row.sku ?? ""} ${row.status}`}
+            onEdit={(row) => router.push(`/admin/products/${row.id}`)}
+            onDelete={async (row) => {
+              await deleteProductRequest(row.id);
+              setNotice(t({ de: "Artikel archiviert.", en: "Product archived." }));
+              await load();
+            }}
+            onBulkDelete={async (rows) => {
+              await bulkDeleteProductsRequest(rows.map((row) => row.id));
+              setNotice(t({ de: "Auswahl archiviert.", en: "Selection archived." }));
+              await load();
+            }}
+            deleteLabel={{ de: "Archivieren?", en: "Archive?" }}
+            bulkDeleteLabel={{ de: "Auswahl archivieren", en: "Archive selected" }}
+            columns={[
+              {
+                id: "name",
+                header: { de: "Name", en: "Name" },
+                sort: "alpha",
+                getValue: (row) => t(row.name),
+                cell: (row) => (
+                  <div>
+                    <p className="font-medium">{t(row.name)}</p>
+                    <p className="font-mono text-xs text-muted">
+                      {row.part_number || "—"} · {row.sku || t({ de: "ohne SKU", en: "no SKU" })}
+                    </p>
+                  </div>
+                ),
+              },
+              {
+                id: "status",
+                header: { de: "Status", en: "Status" },
+                sort: "alpha",
+                getValue: (row) => row.status,
+                cell: (row) => row.status,
+              },
+              {
+                id: "price",
+                header: { de: "Preis", en: "Price" },
+                sort: "number",
+                getValue: (row) => row.price,
+                cell: (row) => formatMoney(row.price, locale),
+              },
+              {
+                id: "stock",
+                header: { de: "Lager", en: "Stock" },
+                sort: "number",
+                getValue: (row) => row.available_stock,
+                cell: (row) => `${row.available_stock}/${row.total_stock}`,
+              },
+              {
+                id: "created_at",
+                header: { de: "Erstellt", en: "Created" },
+                sort: "date",
+                getValue: (row) => row.created_at,
+                cell: (row) => (row.created_at ? new Date(row.created_at).toLocaleString(locale === "de" ? "de-DE" : "en-GB") : "—"),
+              },
+            ]}
+            extraActions={(row) => (
+              <button
+                type="button"
+                className="rounded-full border border-line px-3 py-1.5 text-xs hover:border-ink"
+                onClick={() =>
+                  void (row.status === "published" ? unpublishProductRequest(row.id) : publishProductRequest(row.id))
+                    .then(load)
+                    .catch((err) => setError(err instanceof ApiError ? err.message : t({ de: "Aktion fehlgeschlagen.", en: "Action failed." })))
+                }
+              >
+                {row.status === "published"
+                  ? t({ de: "Zurückziehen", en: "Unpublish" })
+                  : t({ de: "Veröffentlichen", en: "Publish" })}
+              </button>
+            )}
+          />
+        </div>
       </AdminGate>
     </AdminShell>
   );

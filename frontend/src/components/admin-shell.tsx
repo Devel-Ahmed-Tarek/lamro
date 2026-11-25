@@ -25,7 +25,7 @@ export function useAdminNavGroups(): AdminNavGroup[] {
     },
     {
       title: t({ de: "Inhalt", en: "Content" }),
-      items: [{ href: "/admin/cms", label: t({ de: "CMS", en: "CMS" }), permission: "admin.cms" }],
+      items: [{ href: "/admin/cms", label: t({ de: "Inhalte", en: "CMS" }), permission: "admin.cms" }],
     },
     {
       title: t({ de: "Katalog", en: "Catalog" }),
@@ -37,12 +37,19 @@ export function useAdminNavGroups(): AdminNavGroup[] {
       ],
     },
     {
+      title: t({ de: "Zugang", en: "Access" }),
+      items: [
+        { href: "/admin/team", label: t({ de: "Team", en: "Team" }), permission: "admin.staff" },
+        { href: "/admin/roles", label: t({ de: "Rollen & Rechte", en: "Roles & permissions" }), permission: "admin.staff" },
+      ],
+    },
+    {
       title: t({ de: "Handel", en: "Trading" }),
       items: [
         { href: "/admin/auctions", label: t({ de: "Auktionen", en: "Auctions" }), permission: "admin.auctions" },
         { href: "/admin/sellers", label: t({ de: "Verkäufer", en: "Sellers" }), permission: "admin.sellers" },
+        { href: "/admin/company-stock", label: t({ de: "Firmenlager", en: "Company stock" }), permission: "admin.company_stock" },
         { href: "/admin/customers", label: t({ de: "Kunden", en: "Customers" }), permission: "admin.customers" },
-        { href: "/admin/staff", label: t({ de: "Rollen & Rechte", en: "Roles & permissions" }), permission: "admin.staff" },
       ],
     },
     {
@@ -68,7 +75,7 @@ export function useAdminNavGroups(): AdminNavGroup[] {
         { href: "/admin/shipping", label: t({ de: "Versand", en: "Shipping" }), permission: "admin.shipping" },
         { href: "/admin/commissions", label: t({ de: "Provisionen", en: "Commissions" }), permission: "admin.commissions" },
         { href: "/admin/notifications", label: t({ de: "Benachrichtigungen", en: "Notifications" }), permission: "admin.notifications" },
-        { href: "/admin/system", label: t({ de: "System & Backup", en: "System & backup" }), permission: "admin.system" },
+        { href: "/admin/system", label: t({ de: "System & Sicherung", en: "System & backup" }), permission: "admin.system" },
       ],
     },
   ];
@@ -181,11 +188,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
       {open ? (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <button type="button" className="absolute inset-0 bg-ink/40" aria-label="Close" onClick={() => setOpen(false)} />
+          <button type="button" className="absolute inset-0 bg-ink/40" aria-label={t({ de: "Schließen", en: "Close" })} onClick={() => setOpen(false)} />
           <div className="relative flex h-full w-[min(100%,20rem)] flex-col bg-white p-4 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <span className="font-semibold">{t({ de: "Verwaltung", en: "Admin" })}</span>
-              <Button variant="secondary" size="icon" aria-label="Close" onClick={() => setOpen(false)}>×</Button>
+              <Button variant="secondary" size="icon" aria-label={t({ de: "Schließen", en: "Close" })} onClick={() => setOpen(false)}>×</Button>
             </div>
             <div className="flex-1 overflow-y-auto">
               <NavList groups={groups} onNavigate={() => setOpen(false)} />

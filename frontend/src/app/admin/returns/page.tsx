@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin-shell";
-import { Button } from "@/components/ui";
+import { DataTable } from "@/components/data-table";
 import {
   adminFetchReturns,
   adminUpdateReturnStatus,
@@ -10,13 +10,19 @@ import {
 } from "@/lib/commerce-api";
 import { useStore } from "@/lib/store";
 
-const ACTIONS = ["approved", "rejected", "returned", "refunded"] as const;
+const STATUS_LABELS: Record<string, { de: string; en: string }> = {
+  approved: { de: "genehmigt", en: "approved" },
+  rejected: { de: "abgelehnt", en: "rejected" },
+  returned: { de: "zurückerhalten", en: "returned" },
+  refunded: { de: "erstattet", en: "refunded" },
+  requested: { de: "beantragt", en: "requested" },
+};
 
 export default function AdminReturnsPage() {
-  const { t, can } = useStore();
+  const { t, can, locale } = useStore();
   const [items, setItems] = useState<ApiOrderReturn[]>([]);
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState<number | null>(null);
+  const [notice, setNotice] = useState("");
 
   async function load() {
     const response = await adminFetchReturns();
@@ -29,81 +35,83 @@ export default function AdminReturnsPage() {
   }, [can, t]);
 
   if (!can("admin.orders")) {
-    return <AdminShell><p className="text-sm text-muted">No access</p></AdminShell>;
-  }
-
-  async function act(id: number, status: string) {
-    setBusy(id);
-    setError("");
-    try {
-      await adminUpdateReturnStatus(id, status, undefined, status === "refunded");
-      await load();
-    } catch {
-      setError(t({ de: "Aktion fehlgeschlagen.", en: "Action failed." }));
-    } finally {
-      setBusy(null);
-    }
+    return <AdminShell><p className="text-sm text-muted">{t({ de: "Kein Zugriff.", en: "No access" })}</p></AdminShell>;
   }
 
   return (
     <AdminShell>
       <h1 className="text-3xl font-semibold tracking-tight">{t({ de: "Retouren", en: "Returns" })}</h1>
-      <p className="mt-2 text-sm text-muted">
-        {t({
-          de: "Genehmigen, Wareneingang, Refund + Restock.",
-          en: "Approve, receive goods, refund + restock.",
-        })}
-      </p>
-      {error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}
-      <div className="mt-6 overflow-x-auto rounded-3xl border border-line bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="text-muted">
-            <tr>
-              <th className="px-4 py-3 font-medium">{t({ de: "Auftrag", en: "Order" })}</th>
-              <th className="px-4 py-3 font-medium">{t({ de: "Kunde", en: "Customer" })}</th>
-              <th className="px-4 py-3 font-medium">{t({ de: "Grund", en: "Reason" })}</th>
-              <th className="px-4 py-3 font-medium">{t({ de: "Status", en: "Status" })}</th>
-              <th className="px-4 py-3 font-medium" />
-            </tr>
-          </thead>
-          <tbody>
-            {items.length === 0 ? (
-              <tr>
-                <td className="px-4 py-6 text-muted" colSpan={5}>
-                  {t({ de: "Keine Retouren.", en: "No returns." })}
-                </td>
-              </tr>
-            ) : null}
-            {items.map((item) => (
-              <tr key={item.id} className="border-t border-line">
-                <td className="px-4 py-3 font-mono text-xs">{item.order?.number ?? item.order_id}</td>
-                <td className="px-4 py-3">{item.user?.email ?? "—"}</td>
-                <td className="px-4 py-3">
-                  <div>{item.reason}</div>
-                  {item.message ? <div className="mt-1 text-xs text-muted">{item.message}</div> : null}
-                </td>
-                <td className="px-4 py-3">{item.status}</td>
-                <td className="px-4 py-3">
-                  {item.status === "refunded" || item.status === "rejected" ? null : (
-                    <div className="flex flex-wrap gap-2">
-                      {ACTIONS.filter((status) => status !== item.status).map((status) => (
-                        <Button
-                          key={status}
-                          size="sm"
-                          variant={status === "refunded" ? "primary" : "secondary"}
-                          disabled={busy === item.id}
-                          onClick={() => void act(item.id, status)}
-                        >
-                          {status}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {notice ? <p className="mt-3 text-sm text-ok">{notice}</p> : null}
+      {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+      <div className="mt-6">
+        <DataTable
+          rows={items}
+          rowKey={(row) => row.id}
+          defaultSortId="created_at"
+          defaultSortDir="desc"
+          getSearchText={(row) => `${row.order?.number ?? row.order_id} ${row.user?.email ?? ""} ${row.reason} ${row.status}`}
+          onEdit={async (row) => {
+            await adminUpdateReturnStatus(row.id, "approved");
+            setNotice(t({ de: "Retoure genehmigt.", en: "Return approved." }));
+            await load();
+          }}
+          editLabel={{ de: "Genehmigen", en: "Approve" }}
+          onDelete={async (row) => {
+            await adminUpdateReturnStatus(row.id, "rejected");
+            setNotice(t({ de: "Retoure abgelehnt.", en: "Return rejected." }));
+            await load();
+          }}
+          onBulkDelete={async (rows) => {
+            await Promise.all(rows.map((row) => adminUpdateReturnStatus(row.id, "rejected")));
+            setNotice(t({ de: "Auswahl abgelehnt.", en: "Selection rejected." }));
+            await load();
+          }}
+          deleteLabel={{ de: "Ablehnen?", en: "Reject?" }}
+          bulkDeleteLabel={{ de: "Auswahl ablehnen", en: "Reject selected" }}
+          rowDisabled={(row) => row.status === "refunded" || row.status === "rejected"}
+          columns={[
+            {
+              id: "order",
+              header: { de: "Auftrag", en: "Order" },
+              sort: "alpha",
+              getValue: (row) => String(row.order?.number ?? row.order_id),
+              cell: (row) => <span className="font-mono text-xs">{row.order?.number ?? row.order_id}</span>,
+            },
+            {
+              id: "customer",
+              header: { de: "Kunde", en: "Customer" },
+              sort: "alpha",
+              getValue: (row) => row.user?.email ?? "",
+              cell: (row) => row.user?.email ?? "—",
+            },
+            {
+              id: "reason",
+              header: { de: "Grund", en: "Reason" },
+              sort: "alpha",
+              getValue: (row) => row.reason,
+              cell: (row) => (
+                <div>
+                  <div>{row.reason}</div>
+                  {row.message ? <div className="mt-1 text-xs text-muted">{row.message}</div> : null}
+                </div>
+              ),
+            },
+            {
+              id: "status",
+              header: { de: "Status", en: "Status" },
+              sort: "alpha",
+              getValue: (row) => row.status,
+              cell: (row) => t(STATUS_LABELS[row.status] ?? { de: row.status, en: row.status }),
+            },
+            {
+              id: "created_at",
+              header: { de: "Erstellt", en: "Created" },
+              sort: "date",
+              getValue: (row) => row.created_at,
+              cell: (row) => (row.created_at ? new Date(row.created_at).toLocaleString(locale === "de" ? "de-DE" : "en-GB") : "—"),
+            },
+          ]}
+        />
       </div>
     </AdminShell>
   );

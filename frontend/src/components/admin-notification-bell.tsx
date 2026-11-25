@@ -5,15 +5,16 @@ import { useEffect, useRef, useState } from "react";
 import { useInboxRealtime } from "@/hooks/use-inbox-realtime";
 import { useStore } from "@/lib/store";
 
-function timeAgo(iso: string | null | undefined, locale: "de" | "en") {
+function timeAgo(iso: string | null | undefined, locale: string) {
   if (!iso) return "";
   const diff = Math.max(0, Date.now() - new Date(iso).getTime());
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return locale === "de" ? "gerade eben" : "just now";
-  if (mins < 60) return `${mins}m`;
+  if (mins < 60) return locale === "de" ? `vor ${mins} Min.` : `${mins}m`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h`;
-  return `${Math.floor(hours / 24)}d`;
+  if (hours < 24) return locale === "de" ? `vor ${hours} Std.` : `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return locale === "de" ? `vor ${days} T.` : `${days}d`;
 }
 
 export function AdminNotificationBell() {
@@ -53,11 +54,11 @@ export function AdminNotificationBell() {
         <div className="absolute top-12 right-0 z-50 w-[min(100vw-2rem,22rem)] overflow-hidden rounded-2xl border border-line bg-white shadow-[0_20px_50px_-28px_rgba(18,18,18,0.55)]">
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <div>
-              <p className="text-sm font-medium">{t({ de: "Live-Inbox", en: "Live inbox" })}</p>
+              <p className="text-sm font-medium">{t({ de: "Live-Posteingang", en: "Live inbox" })}</p>
               <p className="text-[11px] text-muted">
                 {connected
                   ? t({ de: "Reverb verbunden", en: "Reverb connected" })
-                  : t({ de: "Polling / offline", en: "Polling / offline" })}
+                  : t({ de: "Abrufmodus / offline", en: "Polling / offline" })}
               </p>
             </div>
             {unread > 0 ? (

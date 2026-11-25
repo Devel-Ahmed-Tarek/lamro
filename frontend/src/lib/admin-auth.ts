@@ -10,6 +10,7 @@ export type PermissionKey =
   | "inventory"
   | "auctions"
   | "sellers"
+  | "company_stock"
   | "customers"
   | "staff"
   | "orders"
@@ -34,6 +35,7 @@ export const ALL_PERMISSIONS: PermissionKey[] = [
   "inventory",
   "auctions",
   "sellers",
+  "company_stock",
   "customers",
   "staff",
   "orders",
@@ -59,8 +61,9 @@ export const PERMISSION_LABELS: Record<PermissionKey, { de: string; en: string }
   inventory: { de: "Lager", en: "Inventory" },
   auctions: { de: "Auktionen", en: "Auctions" },
   sellers: { de: "Verkäufer", en: "Sellers" },
+  company_stock: { de: "Firmenlager", en: "Company stock" },
   customers: { de: "Kunden", en: "Customers" },
-  staff: { de: "Mitarbeiter & Rollen", en: "Staff & roles" },
+  staff: { de: "Team & Rollen", en: "Team & roles" },
   orders: { de: "Bestellungen", en: "Orders" },
   payments: { de: "Zahlungen", en: "Payments" },
   invoices: { de: "Rechnungen", en: "Invoices" },

@@ -17,6 +17,7 @@ class CategoryResource extends JsonResource
             'is_active' => $this->is_active,
             'sort' => $this->sort,
             'count' => $this->when(isset($this->products_count), (int) $this->products_count),
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

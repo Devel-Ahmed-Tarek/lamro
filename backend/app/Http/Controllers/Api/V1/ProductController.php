@@ -9,6 +9,8 @@ use App\Http\Resources\ProductMediaResource;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use App\Models\ProductMedia;
+use App\Services\AiProductService;
+use App\Support\Locales;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +20,8 @@ use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
+    public function __construct(private AiProductService $ai) {}
+
     public function index(Request $request): JsonResponse
     {
         $admin = str_contains($request->path(), '/admin/');
@@ -104,9 +108,10 @@ class ProductController extends Controller
     public function store(StoreProductRequest $request): JsonResponse
     {
         $product = DB::transaction(function () use ($request) {
-            $payload = $this->normalizePayload($request->validated());
+            [$payload, $specs] = $this->maybeTranslate($request->validated(), $request->input('specs', []));
+            $payload = $this->normalizePayload($payload);
             $product = Product::query()->create($payload);
-            $this->syncSpecs($product, $request->input('specs', []));
+            $this->syncSpecs($product, $specs);
 
             return $product->load(['category', 'brand', 'media', 'specs']);
         });
@@ -119,11 +124,14 @@ class ProductController extends Controller
     public function update(UpdateProductRequest $request, Product $product): JsonResponse
     {
         $product = DB::transaction(function () use ($request, $product) {
-            $payload = $this->normalizePayload($request->validated(), $product);
+            $validated = $request->validated();
+            $specsInput = $request->exists('specs') ? $request->input('specs', []) : null;
+            [$payload, $specs] = $this->maybeTranslate($validated, $specsInput ?? []);
+            $payload = $this->normalizePayload($payload, $product);
             $product->update($payload);
 
-            if ($request->exists('specs')) {
-                $this->syncSpecs($product, $request->input('specs', []));
+            if ($request->exists('specs') || ($validated['auto_translate'] ?? false)) {
+                $this->syncSpecs($product, $specs);
             }
 
             return $product->fresh()->load(['category', 'brand', 'media', 'specs']);
@@ -134,6 +142,39 @@ class ProductController extends Controller
         ]);
     }
 
+    /**
+     * @param  array<string, mixed>  $validated
+     * @param  list<array<string, mixed>>  $specs
+     * @return array{0: array<string, mixed>, 1: list<array<string, mixed>>}
+     */
+    private function maybeTranslate(array $validated, array $specs): array
+    {
+        $auto = (bool) ($validated['auto_translate'] ?? false);
+        $source = (string) ($validated['source_locale'] ?? request()->input('source_locale', 'en'));
+        unset($validated['auto_translate'], $validated['source_locale'], $validated['specs']);
+
+        if (! $auto) {
+            return [$validated, $specs];
+        }
+
+        if (! Locales::isValid($source)) {
+            $source = Locales::fallback();
+        }
+
+        $translated = $this->ai->translateProductCopy([
+            'name' => $validated['name'] ?? [],
+            'summary' => $validated['summary'] ?? [],
+            'notes' => $validated['notes'] ?? [],
+            'specs' => $specs,
+        ], $source);
+
+        $validated['name'] = $translated['name'];
+        $validated['summary'] = $translated['summary'];
+        $validated['notes'] = $translated['notes'];
+
+        return [$validated, $translated['specs']];
+    }
+
     public function destroy(Product $product): JsonResponse
     {
         $product->update(['status' => 'archived']);
@@ -141,6 +182,18 @@ class ProductController extends Controller
         return response()->json([
             'data' => new ProductResource($product->fresh()->load(['category', 'brand', 'media', 'specs'])),
         ]);
+    }
+
+    public function bulkDestroy(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:products,id'],
+        ]);
+
+        Product::query()->whereIn('id', $data['ids'])->update(['status' => 'archived']);
+
+        return response()->json(['data' => ['ok' => true, 'count' => count($data['ids'])]]);
     }
 
     public function publish(Product $product): JsonResponse
@@ -219,14 +272,22 @@ class ProductController extends Controller
         }
         unset($data['price'], $data['specs']);
 
-        $name = $data['name'] ?? $existing?->name ?? ['de' => 'Draft', 'en' => 'Draft'];
-        $data['name'] = [
-            'de' => $name['de'] ?? '',
-            'en' => $name['en'] ?? '',
-        ];
+        $data['name'] = \App\Support\Locales::normalize(
+            $data['name'] ?? $existing?->name ?? ['en' => 'Draft', 'de' => 'Draft'],
+        );
+        if (array_key_exists('summary', $data) || $existing?->summary) {
+            $data['summary'] = \App\Support\Locales::normalize($data['summary'] ?? $existing?->summary ?? []);
+        }
+        if (array_key_exists('notes', $data) || $existing?->notes) {
+            $data['notes'] = \App\Support\Locales::normalize($data['notes'] ?? $existing?->notes ?? []);
+        }
 
         if (empty($data['slug'])) {
-            $base = Str::slug($data['name']['en'] ?: $data['name']['de'] ?: 'product');
+            $base = Str::slug(
+                \App\Support\Locales::pick($data['name'], 'en')
+                    ?: \App\Support\Locales::pick($data['name'], 'de')
+                    ?: 'product'
+            );
             $slug = $base !== '' ? $base : 'product';
             $candidate = $slug;
             $i = 1;
@@ -265,10 +326,7 @@ class ProductController extends Controller
             }
 
             $product->specs()->create([
-                'label' => [
-                    'de' => $spec['label']['de'] ?? '',
-                    'en' => $spec['label']['en'] ?? '',
-                ],
+                'label' => \App\Support\Locales::normalize($spec['label'] ?? []),
                 'value' => (string) $spec['value'],
                 'sort' => $index,
             ]);
@@ -296,7 +354,7 @@ class ProductController extends Controller
         if (blank($product->testing)) {
             $missing[] = 'testing';
         }
-        if (! filled($product->name['de'] ?? null) || ! filled($product->name['en'] ?? null)) {
+        if (! \App\Support\Locales::filled($product->name)) {
             $missing[] = 'name';
         }
 

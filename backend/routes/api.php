@@ -18,6 +18,8 @@ use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\StaffController;
+use App\Http\Controllers\Api\V1\AiProductController;
+use App\Http\Controllers\Api\V1\CompanyStockListingController;
 use App\Http\Controllers\Api\V1\StripeController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +37,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/auctions', [AuctionController::class, 'index']);
     Route::get('/auctions/{slug}', [AuctionController::class, 'show']);
     Route::post('/inquiries', [InquiryController::class, 'store']);
+    Route::post('/company-stock-listings', [CompanyStockListingController::class, 'store']);
     Route::post('/contact', [PlatformController::class, 'contact']);
     Route::get('/features', [PlatformController::class, 'features']);
     Route::get('/payments/stripe/config', [StripeController::class, 'config']);
@@ -102,8 +105,12 @@ Route::prefix('v1')->group(function () {
             Route::get('/staff', [StaffController::class, 'index']);
             Route::post('/staff', [StaffController::class, 'store']);
             Route::put('/staff/{user}', [StaffController::class, 'update']);
+            Route::post('/staff/bulk-delete', [StaffController::class, 'bulkDestroy']);
+            Route::delete('/staff/{user}', [StaffController::class, 'destroy']);
             Route::get('/roles', [RoleController::class, 'index']);
+            Route::post('/roles', [RoleController::class, 'store']);
             Route::put('/roles/{role}', [RoleController::class, 'update']);
+            Route::delete('/roles/{role}', [RoleController::class, 'destroy']);
         });
 
         Route::prefix('admin')->group(function () {
@@ -111,12 +118,14 @@ Route::prefix('v1')->group(function () {
                 Route::get('/categories', [CategoryController::class, 'index']);
                 Route::post('/categories', [CategoryController::class, 'store']);
                 Route::put('/categories/{category}', [CategoryController::class, 'update']);
+                Route::post('/categories/bulk-delete', [CategoryController::class, 'bulkDestroy']);
                 Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
             });
 
             Route::middleware('permission:admin.brands')->group(function () {
                 Route::get('/brands', [BrandController::class, 'index']);
                 Route::post('/brands', [BrandController::class, 'store']);
+                Route::post('/brands/bulk-delete', [BrandController::class, 'bulkDestroy']);
                 Route::put('/brands/{brand}', [BrandController::class, 'update']);
                 Route::delete('/brands/{brand}', [BrandController::class, 'destroy']);
             });
@@ -124,6 +133,7 @@ Route::prefix('v1')->group(function () {
             Route::middleware('permission:admin.products')->group(function () {
                 Route::get('/products', [ProductController::class, 'index']);
                 Route::post('/products', [ProductController::class, 'store']);
+                Route::post('/products/bulk-delete', [ProductController::class, 'bulkDestroy']);
                 Route::get('/products/{product}', [ProductController::class, 'adminShow']);
                 Route::put('/products/{product}', [ProductController::class, 'update']);
                 Route::delete('/products/{product}', [ProductController::class, 'destroy']);
@@ -132,6 +142,9 @@ Route::prefix('v1')->group(function () {
                 Route::post('/products/{product}/archive', [ProductController::class, 'archive']);
                 Route::post('/products/{product}/media', [ProductController::class, 'storeMedia']);
                 Route::delete('/products/{product}/media/{media}', [ProductController::class, 'destroyMedia']);
+                Route::get('/ai/products/config', [AiProductController::class, 'config']);
+                Route::post('/ai/products/draft', [AiProductController::class, 'draft']);
+                Route::post('/ai/products/translate', [AiProductController::class, 'translate']);
             });
 
             Route::middleware('permission:admin.inventory')->group(function () {
@@ -179,6 +192,13 @@ Route::prefix('v1')->group(function () {
                 Route::get('/inquiries', [InquiryController::class, 'adminIndex']);
                 Route::post('/inquiries/{inquiry}/reply', [InquiryController::class, 'adminReply']);
                 Route::put('/inquiries/{inquiry}/status', [InquiryController::class, 'adminUpdateStatus']);
+            });
+
+            Route::middleware('permission:admin.company_stock')->group(function () {
+                Route::get('/company-stock-listings', [CompanyStockListingController::class, 'adminIndex']);
+                Route::post('/company-stock-listings/bulk-delete', [CompanyStockListingController::class, 'adminBulkDestroy']);
+                Route::put('/company-stock-listings/{listing}', [CompanyStockListingController::class, 'adminUpdate']);
+                Route::delete('/company-stock-listings/{listing}', [CompanyStockListingController::class, 'adminDestroy']);
             });
 
             Route::middleware('permission:admin.customers')->group(function () {

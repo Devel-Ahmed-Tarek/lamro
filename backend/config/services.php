@@ -43,4 +43,20 @@ return [
         'frontend_url' => env('FRONTEND_URL', 'http://127.0.0.1:3000'),
     ],
 
+    /*
+    | AI for product draft + translation.
+    | provider: demo|groq|gemini|openai
+    | Free-tier friendly defaults: groq (https://console.groq.com) or gemini (Google AI Studio).
+    | Without a key, "demo" always works for development.
+    */
+    'ai' => [
+        'provider' => env('AI_PROVIDER', 'demo'),
+        'groq_key' => env('AI_GROQ_KEY', env('GROQ_API_KEY')),
+        'groq_model' => env('AI_GROQ_MODEL', 'openai/gpt-oss-120b'),
+        'gemini_key' => env('AI_GEMINI_KEY', env('GEMINI_API_KEY')),
+        'gemini_model' => env('AI_GEMINI_MODEL', 'gemini-2.0-flash'),
+        'openai_key' => env('AI_OPENAI_KEY', env('OPENAI_API_KEY')),
+        'openai_model' => env('AI_OPENAI_MODEL', 'gpt-4o-mini'),
+    ],
+
 ];

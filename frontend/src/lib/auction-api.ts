@@ -66,6 +66,7 @@ export type ApiAuction = {
   my_application?: { id: number; status: string; note: string | null; reviewed_at: string | null } | null;
   applications_count?: number;
   bids_count?: number;
+  created_at?: string | null;
 };
 
 type Envelope<T> = { data: T };

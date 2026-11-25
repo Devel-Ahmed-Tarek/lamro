@@ -20,7 +20,7 @@ export default function AdminNotificationsPage() {
     if (can("admin.notifications")) void load().catch(() => undefined);
   }, [can]);
 
-  if (!can("admin.notifications")) return <AdminShell><p className="text-sm text-muted">No access</p></AdminShell>;
+  if (!can("admin.notifications")) return <AdminShell><p className="text-sm text-muted">{t({ de: "Kein Zugriff.", en: "No access" })}</p></AdminShell>;
 
   return (
     <AdminShell>
@@ -30,10 +30,10 @@ export default function AdminNotificationsPage() {
           <li key={item.id} className="flex items-center justify-between px-4 py-3 text-sm">
             <div>
               <p className="font-mono text-xs text-muted">{item.key}</p>
-              <p>{item.subject.en}</p>
+              <p>{item.subject.de || item.subject.en}</p>
             </div>
             <button type="button" className="text-copper" onClick={() => void adminPut(`/api/v1/admin/notification-templates/${item.id}`, { enabled: !item.enabled }).then(load)}>
-              {item.enabled ? "ON" : "OFF"}
+              {item.enabled ? t({ de: "AN", en: "ON" }) : t({ de: "AUS", en: "OFF" })}
             </button>
           </li>
         ))}

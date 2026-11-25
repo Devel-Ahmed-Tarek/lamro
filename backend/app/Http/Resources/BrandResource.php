@@ -16,6 +16,7 @@ class BrandResource extends JsonResource
             'slug' => $this->slug,
             'is_active' => $this->is_active,
             'count' => $this->when(isset($this->products_count), (int) $this->products_count),
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

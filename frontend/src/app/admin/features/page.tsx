@@ -20,7 +20,7 @@ export default function FeaturesPage() {
     if (can("admin.features")) void load().catch(() => undefined);
   }, [can]);
 
-  if (!can("admin.features")) return <AdminShell><p className="text-sm text-muted">No access</p></AdminShell>;
+  if (!can("admin.features")) return <AdminShell><p className="text-sm text-muted">{t({ de: "Kein Zugriff.", en: "No access" })}</p></AdminShell>;
 
   return (
     <AdminShell>
@@ -34,7 +34,7 @@ export default function FeaturesPage() {
               className={item.enabled ? "text-moss" : "text-muted"}
               onClick={() => void adminPut(`/api/v1/admin/features/${item.key}`, { enabled: !item.enabled }).then(load)}
             >
-              {item.enabled ? "ON" : "OFF"}
+              {item.enabled ? t({ de: "AN", en: "ON" }) : t({ de: "AUS", en: "OFF" })}
             </button>
           </li>
         ))}

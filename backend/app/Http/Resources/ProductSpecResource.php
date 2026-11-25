@@ -12,7 +12,7 @@ class ProductSpecResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'label' => $this->label,
+            'label' => \App\Support\Locales::normalize($this->label ?? []),
             'value' => $this->value,
             'sort' => $this->sort,
         ];

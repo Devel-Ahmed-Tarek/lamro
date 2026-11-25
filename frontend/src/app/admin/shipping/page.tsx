@@ -21,7 +21,7 @@ export default function AdminShippingPage() {
     if (can("admin.shipping")) void load().catch(() => undefined);
   }, [can]);
 
-  if (!can("admin.shipping")) return <AdminShell><p className="text-sm text-muted">No access</p></AdminShell>;
+  if (!can("admin.shipping")) return <AdminShell><p className="text-sm text-muted">{t({ de: "Kein Zugriff.", en: "No access" })}</p></AdminShell>;
 
   return (
     <AdminShell>
@@ -30,11 +30,11 @@ export default function AdminShippingPage() {
         {items.map((item) => (
           <li key={item.id} className="flex items-center justify-between px-4 py-3 text-sm">
             <div>
-              <p className="font-medium">{locale === "de" ? item.name.de : item.name.en}</p>
+              <p className="font-medium">{t(item.name)}</p>
               <p className="font-mono text-xs text-muted">{item.code} · {formatMoney(item.price, locale)}</p>
             </div>
             <button type="button" className="text-copper" onClick={() => void adminPut(`/api/v1/admin/shipping-methods/${item.id}`, { is_active: !item.is_active }).then(load)}>
-              {item.is_active ? "ON" : "OFF"}
+              {item.is_active ? t({ de: "AN", en: "ON" }) : t({ de: "AUS", en: "OFF" })}
             </button>
           </li>
         ))}

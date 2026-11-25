@@ -75,4 +75,16 @@ class BrandController extends Controller
             'data' => new BrandResource($brand->fresh()->loadCount('products')),
         ]);
     }
+
+    public function bulkDestroy(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:brands,id'],
+        ]);
+
+        Brand::query()->whereIn('id', $data['ids'])->update(['is_active' => false]);
+
+        return response()->json(['data' => ['ok' => true, 'count' => count($data['ids'])]]);
+    }
 }

@@ -12,8 +12,8 @@ export default function AdminCommissionsPage() {
       <div className="mt-6">
         <Notice>
           {t({
-            de: "Provisionen gehören zum External Partner und kommen mit diesem Modul (Coming soon).",
-            en: "Commissions belong to External Partner and ship with that module (Coming soon).",
+            de: "Provisionen gehören zum externen Partner-Modul und folgen in einer späteren Ausbaustufe.",
+            en: "Commissions belong to External Partner and ship with that module (coming soon).",
           })}
         </Notice>
       </div>

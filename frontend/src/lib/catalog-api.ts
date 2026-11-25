@@ -1,5 +1,6 @@
 import { api } from "@/lib/api";
-import type { Condition, Copy, Product, Testing } from "@/lib/catalog";
+import type { Condition, Copy, Locale, Product, Testing } from "@/lib/catalog";
+import { emptyCopy } from "@/lib/catalog";
 
 export type ApiCategory = {
   id: number;
@@ -8,6 +9,7 @@ export type ApiCategory = {
   is_active: boolean;
   sort: number;
   count?: number;
+  created_at?: string | null;
 };
 
 export type ApiBrand = {
@@ -16,6 +18,7 @@ export type ApiBrand = {
   slug: string;
   is_active: boolean;
   count?: number;
+  created_at?: string | null;
 };
 
 export type ApiSpec = {
@@ -68,6 +71,7 @@ export type ApiProduct = {
   brand?: ApiBrand | null;
   specs?: ApiSpec[];
   media?: ApiMedia[];
+  created_at?: string | null;
 };
 
 type Envelope<T> = { data: T };
@@ -109,9 +113,9 @@ export function toCatalogProduct(product: ApiProduct): Product {
     category: product.category_slug ?? product.category?.slug ?? "",
     weight: product.weight ?? "",
     dimensions: product.dimensions ?? "",
-    notes: product.notes ?? { de: "", en: "" },
+    notes: product.notes ?? emptyCopy(),
     specs: (product.specs ?? []).map((spec) => ({
-      label: spec.label ?? { de: "", en: "" },
+      label: spec.label ?? emptyCopy(),
       value: spec.value,
     })),
   };
@@ -155,6 +159,13 @@ export async function hideCategoryRequest(id: number) {
   return api<Envelope<ApiCategory>>(`/api/v1/admin/categories/${id}`, { method: "DELETE" });
 }
 
+export async function bulkDeleteCategoriesRequest(ids: number[]) {
+  return api<Envelope<{ ok: boolean; count: number }>>("/api/v1/admin/categories/bulk-delete", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+}
+
 export async function fetchAdminBrands() {
   return api<Envelope<ApiBrand[]>>("/api/v1/admin/brands");
 }
@@ -175,6 +186,13 @@ export async function updateBrandRequest(id: number, payload: Partial<{ name: st
 
 export async function hideBrandRequest(id: number) {
   return api<Envelope<ApiBrand>>(`/api/v1/admin/brands/${id}`, { method: "DELETE" });
+}
+
+export async function bulkDeleteBrandsRequest(ids: number[]) {
+  return api<Envelope<{ ok: boolean; count: number }>>("/api/v1/admin/brands/bulk-delete", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
 }
 
 export async function fetchAdminProducts(filters: ProductFilters = {}) {
@@ -211,7 +229,51 @@ export type ProductPayload = {
   allow_quote?: boolean;
   allow_inquiry?: boolean;
   specs?: { label: Copy; value: string }[];
+  auto_translate?: boolean;
+  source_locale?: Locale;
 };
+
+export type AiProductDraft = {
+  source_locale: Locale;
+  name: Copy;
+  summary: Copy;
+  notes: Copy;
+  part_number?: string | null;
+  model?: string | null;
+  sku?: string | null;
+  condition?: string;
+  testing?: string;
+  weight?: string | null;
+  dimensions?: string | null;
+  specs?: { label: Copy; value: string }[];
+  provider: string;
+};
+
+export async function fetchAiProductConfig() {
+  return api<Envelope<{ provider: string; demo: boolean; locales: Locale[]; labels: Record<string, string> }>>(
+    "/api/v1/admin/ai/products/config",
+  );
+}
+
+export async function aiProductDraftRequest(description: string, source_locale: Locale) {
+  return api<Envelope<AiProductDraft>>("/api/v1/admin/ai/products/draft", {
+    method: "POST",
+    body: JSON.stringify({ description, source_locale }),
+  });
+}
+
+export async function aiProductTranslateRequest(payload: {
+  source_locale: Locale;
+  name?: Copy;
+  summary?: Copy;
+  notes?: Copy;
+  specs?: { label: Copy; value: string }[];
+}) {
+  return api<Envelope<{ name: Copy; summary: Copy; notes: Copy; specs: { label: Copy; value: string }[]; provider: string }>>(
+    "/api/v1/admin/ai/products/translate",
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+}
 
 export async function createProductRequest(payload: ProductPayload) {
   return api<Envelope<ApiProduct>>("/api/v1/admin/products", {
@@ -237,6 +299,17 @@ export async function unpublishProductRequest(id: number) {
 
 export async function archiveProductRequest(id: number) {
   return api<Envelope<ApiProduct>>(`/api/v1/admin/products/${id}/archive`, { method: "POST" });
+}
+
+export async function deleteProductRequest(id: number) {
+  return api<Envelope<ApiProduct>>(`/api/v1/admin/products/${id}`, { method: "DELETE" });
+}
+
+export async function bulkDeleteProductsRequest(ids: number[]) {
+  return api<Envelope<{ ok: boolean; count: number }>>("/api/v1/admin/products/bulk-delete", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
 }
 
 export async function uploadProductMediaRequest(id: number, file: File, type?: string) {

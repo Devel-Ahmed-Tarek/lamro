@@ -6,7 +6,7 @@ import { isAdminUser } from "@/lib/auth-api";
 import { useStore } from "@/lib/store";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { ready, authUser, role } = useStore();
+  const { ready, authUser, role, t } = useStore();
   const router = useRouter();
 
   useEffect(() => {
@@ -17,11 +17,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [ready, authUser, role, router]);
 
   if (!ready) {
-    return <div className="grid flex-1 place-items-center p-10 text-sm text-muted">Loading…</div>;
+    return <div className="grid flex-1 place-items-center p-10 text-sm text-muted">{t({ de: "Wird geladen…", en: "Loading…" })}</div>;
   }
 
   if (!authUser || !isAdminUser(authUser)) {
-    return <div className="grid flex-1 place-items-center p-10 text-sm text-muted">Redirecting…</div>;
+    return <div className="grid flex-1 place-items-center p-10 text-sm text-muted">{t({ de: "Weiterleitung…", en: "Redirecting…" })}</div>;
   }
 
   return children;

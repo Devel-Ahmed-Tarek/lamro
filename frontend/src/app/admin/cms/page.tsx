@@ -22,11 +22,11 @@ export default function AdminCmsPage() {
     if (can("admin.cms")) void load().catch(() => undefined);
   }, [can]);
 
-  if (!can("admin.cms")) return <AdminShell><p className="text-sm text-muted">No access</p></AdminShell>;
+  if (!can("admin.cms")) return <AdminShell><p className="text-sm text-muted">{t({ de: "Kein Zugriff.", en: "No access" })}</p></AdminShell>;
 
   return (
     <AdminShell>
-      <h1 className="text-3xl font-semibold tracking-tight">CMS</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">{t({ de: "Inhalte (CMS)", en: "CMS" })}</h1>
       <div className="mt-6 grid gap-6 lg:grid-cols-[240px_1fr]">
         <ul className="rounded-3xl border border-line bg-white p-3 text-sm">
           {items.map((item) => (
@@ -46,10 +46,10 @@ export default function AdminCmsPage() {
             }}
           >
             <p className="font-mono text-xs text-muted">{selected.slug}</p>
-            <input className={fieldClass} value={selected.title.en} onChange={(e) => setSelected({ ...selected, title: { ...selected.title, en: e.target.value } })} placeholder="Title EN" />
-            <input className={fieldClass} value={selected.title.de} onChange={(e) => setSelected({ ...selected, title: { ...selected.title, de: e.target.value } })} placeholder="Title DE" />
-            <textarea className={fieldClass} rows={6} value={selected.body.en} onChange={(e) => setSelected({ ...selected, body: { ...selected.body, en: e.target.value } })} />
-            <textarea className={fieldClass} rows={6} value={selected.body.de} onChange={(e) => setSelected({ ...selected, body: { ...selected.body, de: e.target.value } })} />
+            <input className={fieldClass} value={selected.title.de} onChange={(e) => setSelected({ ...selected, title: { ...selected.title, de: e.target.value } })} placeholder={t({ de: "Titel (DE)", en: "Title DE" })} />
+            <input className={fieldClass} value={selected.title.en} onChange={(e) => setSelected({ ...selected, title: { ...selected.title, en: e.target.value } })} placeholder={t({ de: "Titel (EN)", en: "Title EN" })} />
+            <textarea className={fieldClass} rows={6} value={selected.body.de} onChange={(e) => setSelected({ ...selected, body: { ...selected.body, de: e.target.value } })} placeholder={t({ de: "Inhalt (DE)", en: "Body DE" })} />
+            <textarea className={fieldClass} rows={6} value={selected.body.en} onChange={(e) => setSelected({ ...selected, body: { ...selected.body, en: e.target.value } })} placeholder={t({ de: "Inhalt (EN)", en: "Body EN" })} />
             <button className="rounded-full bg-ink px-4 py-2 text-sm text-paper">{t({ de: "Speichern", en: "Save" })}</button>
           </form>
         ) : null}

@@ -13,6 +13,7 @@ export type AuthUser = {
   country?: string | null;
   roles: string[];
   permissions: string[];
+  created_at?: string | null;
 };
 
 type Envelope<T> = { data: T };
@@ -79,6 +80,14 @@ export async function removeAvatarRequest() {
   return api<Envelope<AuthUser>>("/api/v1/profile/avatar", { method: "DELETE" });
 }
 
+export type AdminRole = {
+  id: string;
+  name: string;
+  locked?: boolean;
+  users_count?: number;
+  permissions: string[];
+};
+
 export async function fetchStaff() {
   return api<Envelope<AuthUser[]>>("/api/v1/admin/staff");
 }
@@ -89,6 +98,7 @@ export async function createStaffRequest(payload: {
   password: string;
   role: string;
   phone?: string;
+  is_active?: boolean;
 }) {
   return api<Envelope<AuthUser>>("/api/v1/admin/staff", {
     method: "POST",
@@ -106,20 +116,50 @@ export async function updateStaffRequest(
   });
 }
 
+export async function deleteStaffRequest(id: number) {
+  return api<Envelope<{ ok: boolean }>>(`/api/v1/admin/staff/${id}`, { method: "DELETE" });
+}
+
+export async function bulkDeleteStaffRequest(ids: number[]) {
+  return api<Envelope<{ ok: boolean; count: number }>>("/api/v1/admin/staff/bulk-delete", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+}
+
 export async function fetchRoles() {
-  return api<Envelope<{ roles: { id: string; name: string; permissions: string[] }[]; permissions: string[] }>>("/api/v1/admin/roles");
+  return api<Envelope<{ roles: AdminRole[]; permissions: string[] }>>("/api/v1/admin/roles");
+}
+
+export async function createRoleRequest(payload: { name: string; permissions?: string[] }) {
+  return api<Envelope<AdminRole>>("/api/v1/admin/roles", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateRoleRequest(
+  role: string,
+  payload: Partial<{ name: string; permissions: string[] }>,
+) {
+  return api<Envelope<AdminRole>>(`/api/v1/admin/roles/${role}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function updateRolePermissionsRequest(role: string, permissions: string[]) {
-  return api<Envelope<{ id: string; name: string; permissions: string[] }>>(`/api/v1/admin/roles/${role}`, {
-    method: "PUT",
-    body: JSON.stringify({ permissions }),
-  });
+  return updateRoleRequest(role, { permissions });
+}
+
+export async function deleteRoleRequest(role: string) {
+  return api<Envelope<{ ok: boolean }>>(`/api/v1/admin/roles/${role}`, { method: "DELETE" });
 }
 
 export function isAdminUser(user: AuthUser | null | undefined) {
   if (!user) return false;
-  return user.roles.some((role) => ["super_admin", "ops", "catalog", "support"].includes(role));
+  if (user.permissions.some((permission) => permission.startsWith("admin."))) return true;
+  return user.roles.some((role) => role !== "customer" && role !== "seller");
 }
 
 export function isCustomerUser(user: AuthUser | null | undefined) {

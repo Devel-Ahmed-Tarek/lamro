@@ -28,6 +28,9 @@ export default function AdminOverviewPage() {
 
   const quick = [
     { href: "/admin/products", label: t({ de: "Artikel anlegen", en: "Create product" }) },
+    { href: "/admin/team", label: t({ de: "Team verwalten", en: "Manage team" }) },
+    { href: "/admin/roles", label: t({ de: "Rollen steuern", en: "Manage roles" }) },
+    { href: "/admin/company-stock", label: t({ de: "Firmenlager prüfen", en: "Review company stock" }) },
     { href: "/admin/sellers", label: t({ de: "Verkäufer prüfen", en: "Review sellers" }) },
     { href: "/admin/auctions", label: t({ de: "Auktionen überwachen", en: "Monitor auctions" }) },
     { href: "/admin/features", label: t({ de: "Funktionen schalten", en: "Switch features" }) },

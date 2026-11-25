@@ -13,9 +13,9 @@ class ProductResource extends JsonResource
         return [
             'id' => $this->id,
             'slug' => $this->slug,
-            'name' => $this->name,
-            'summary' => $this->summary ?? ['de' => '', 'en' => ''],
-            'notes' => $this->notes ?? ['de' => '', 'en' => ''],
+            'name' => \App\Support\Locales::normalize($this->name ?? []),
+            'summary' => \App\Support\Locales::normalize($this->summary ?? []),
+            'notes' => \App\Support\Locales::normalize($this->notes ?? []),
             'part_number' => $this->part_number,
             'model' => $this->model,
             'sku' => $this->sku,

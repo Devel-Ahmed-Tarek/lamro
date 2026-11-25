@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="de" className={`${sans.variable} ${mono.variable} h-full antialiased`}>
+    <html lang="en" className={`${sans.variable} ${mono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
         <StoreProvider>
           <Suspense fallback={null}>

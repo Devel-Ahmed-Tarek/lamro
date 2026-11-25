@@ -26,7 +26,7 @@ export default function AdminReportsPage() {
     void adminGet<Report>("/api/v1/admin/reports").then((response) => setData((response as { data: Report }).data));
   }, [can]);
 
-  if (!can("admin.reports")) return <AdminShell><p className="text-sm text-muted">No access</p></AdminShell>;
+  if (!can("admin.reports")) return <AdminShell><p className="text-sm text-muted">{t({ de: "Kein Zugriff.", en: "No access" })}</p></AdminShell>;
 
   return (
     <AdminShell>
@@ -48,7 +48,7 @@ export default function AdminReportsPage() {
               });
           }}
         >
-          Export CSV
+          {t({ de: "CSV exportieren", en: "Export CSV" })}
         </button>
       </div>
       {data ? (
@@ -60,8 +60,8 @@ export default function AdminReportsPage() {
             [t({ de: "Rechnungen", en: "Invoices" }), String(data.invoices)],
             [t({ de: "Offene Anfragen", en: "Open inquiries" }), String(data.open_inquiries)],
             [t({ de: "Kunden", en: "Customers" }), String(data.customers)],
-            ["Store", formatMoney(data.sales_split.store / 100, locale)],
-            ["Auction", formatMoney(data.sales_split.auction / 100, locale)],
+            [t({ de: "Shop", en: "Store" }), formatMoney(data.sales_split.store / 100, locale)],
+            [t({ de: "Auktion", en: "Auction" }), formatMoney(data.sales_split.auction / 100, locale)],
           ].map(([label, value]) => (
             <div key={label} className="rounded-3xl border border-line bg-white p-5">
               <dt className="text-sm text-muted">{label}</dt>

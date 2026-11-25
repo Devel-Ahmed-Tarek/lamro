@@ -23,6 +23,7 @@ class InvoiceResource extends JsonResource
             'tax_rate_bps' => $this->tax_rate_bps,
             'snapshot' => $this->snapshot,
             'issued_at' => $this->issued_at?->toIso8601String(),
+            'created_at' => ($this->issued_at ?? $this->created_at)?->toIso8601String(),
             'order' => new OrderResource($this->whenLoaded('order')),
         ];
     }

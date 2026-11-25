@@ -14,7 +14,7 @@ export function AdminGate({ permission, children }: { permission: string; childr
   }, [ready, allowed, router]);
 
   if (!ready) {
-    return <p className="text-sm text-muted">Loading…</p>;
+    return <p className="text-sm text-muted">{t({ de: "Wird geladen…", en: "Loading…" })}</p>;
   }
 
   if (!allowed) {

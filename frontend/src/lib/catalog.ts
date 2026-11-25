@@ -1,5 +1,35 @@
-export type Locale = "de" | "en";
-export type Copy = Record<Locale, string>;
+export const LOCALES = ["ar", "en", "de", "fr", "it", "es", "tr", "nl", "pl", "pt"] as const;
+export type Locale = (typeof LOCALES)[number];
+export type Copy = Partial<Record<Locale, string>>;
+
+export const LOCALE_LABELS: Record<Locale, string> = {
+  ar: "العربية",
+  en: "English",
+  de: "Deutsch",
+  fr: "Français",
+  it: "Italiano",
+  es: "Español",
+  tr: "Türkçe",
+  nl: "Nederlands",
+  pl: "Polski",
+  pt: "Português",
+};
+
+export function emptyCopy(): Copy {
+  return Object.fromEntries(LOCALES.map((locale) => [locale, ""])) as Copy;
+}
+
+export function pickCopy(copy: Copy | Record<string, string | undefined> | undefined, locale: Locale): string {
+  if (!copy) return "";
+  return (
+    copy[locale] ||
+    copy.en ||
+    copy.de ||
+    copy.ar ||
+    Object.values(copy).find((value) => typeof value === "string" && value.trim()) ||
+    ""
+  );
+}
 
 export type Condition = "new" | "used" | "refurbished" | "parts";
 export type Testing = "tested" | "working" | "untested" | "defective" | "partial" | "unknown";
@@ -309,8 +339,21 @@ export function auctionBySlug(slug: string) {
   return auctions.find((auction) => auction.slug === slug);
 }
 
+const moneyLocales: Record<Locale, string> = {
+  ar: "ar",
+  en: "en-GB",
+  de: "de-DE",
+  fr: "fr-FR",
+  it: "it-IT",
+  es: "es-ES",
+  tr: "tr-TR",
+  nl: "nl-NL",
+  pl: "pl-PL",
+  pt: "pt-PT",
+};
+
 export function formatMoney(value: number, locale: Locale) {
-  return new Intl.NumberFormat(locale === "de" ? "de-DE" : "en-GB", {
+  return new Intl.NumberFormat(moneyLocales[locale] ?? "en-GB", {
     style: "currency",
     currency: "EUR",
   }).format(value);

@@ -12,7 +12,7 @@ export default function SellersPage() {
       <div className="mt-6">
         <Notice>
           {t({
-            de: "Externe Partner-Verkäufer — Coming soon. Aktuell betreibt nur Jala Katalog und Auktionen.",
+            de: "Externe Partner-Verkäufer folgen in Kürze. Derzeit betreibt nur Jala Katalog und Auktionen.",
             en: "External partner sellers — Coming soon. Right now only Jala runs catalog and auctions.",
           })}
         </Notice>

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Dropdown, MenuButton, MenuLink } from "@/components/ui/dropdown";
 import { usePublicBrands, usePublicCategories } from "@/hooks/use-public-catalog";
+import { LOCALES, LOCALE_LABELS } from "@/lib/catalog";
 import { useStore } from "@/lib/store";
 
 const direct = [
@@ -16,6 +17,7 @@ const direct = [
 const company = [
   { href: "/about", de: "Über uns", en: "About" },
   { href: "/services", de: "Leistungen", en: "Services" },
+  { href: "/company-stock", de: "Firmenlager", en: "Company stock" },
   { href: "/contact", de: "Kontakt", en: "Contact" },
 ];
 
@@ -88,9 +90,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <svg viewBox="0 0 20 20" className="pointer-events-none absolute top-2.5 left-3 h-5 w-5 text-muted" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="8.5" cy="8.5" r="5" /><path d="M12.5 12.5 16.5 16.5" /></svg>
             </label>
           </form>
-          <Dropdown plain className="hidden sm:block" align="end" label={locale === "de" ? "DE" : "EN"}>
-            <MenuButton active={locale === "de"} onClick={() => setLocale("de")}>Deutsch</MenuButton>
-            <MenuButton active={locale === "en"} onClick={() => setLocale("en")}>English</MenuButton>
+          <Dropdown plain className="hidden sm:block" align="end" label={LOCALE_LABELS[locale]}>
+            {LOCALES.map((code) => (
+              <MenuButton key={code} active={locale === code} onClick={() => setLocale(code)}>
+                {LOCALE_LABELS[code]}
+              </MenuButton>
+            ))}
           </Dropdown>
           <Link href="/cart" className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white shadow-[0_1px_2px_rgba(18,18,18,0.06),0_8px_16px_-12px_rgba(18,18,18,0.35)] transition duration-150 hover:-translate-y-px hover:border-copper/50 hover:text-copper hover:shadow-[0_10px_22px_-12px_rgba(255,77,0,0.55)]" aria-label={de ? "Warenkorb" : "Cart"}>
             <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M4 5h1.2l1.2 8h8.2l1.4-5.5H7" /><circle cx="8.2" cy="16" r="1" /><circle cx="14" cy="16" r="1" /></svg>
@@ -117,7 +122,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
             >
               <MenuLink href={accountHref}>{de ? "Übersicht" : "Overview"}</MenuLink>
               {activeRole === "admin" ? <MenuLink href="/admin/profile">{de ? "Profil" : "Profile"}</MenuLink> : null}
-              {activeRole === "admin" ? <MenuLink href="/admin/staff">{de ? "Rollen & Rechte" : "Roles & permissions"}</MenuLink> : null}
+              {activeRole === "admin" ? <MenuLink href="/admin/team">{de ? "Team" : "Team"}</MenuLink> : null}
+              {activeRole === "admin" ? <MenuLink href="/admin/roles">{de ? "Rollen & Rechte" : "Roles & permissions"}</MenuLink> : null}
               <MenuButton onClick={async () => {
                 if (activeRole === "admin") await logoutAuth();
                 else setRole(null);
@@ -155,9 +161,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <Dropdown label={de ? "Unternehmen" : "Company"}>
                 {company.map((item) => <MenuLink key={item.href} href={item.href}>{de ? item.de : item.en}</MenuLink>)}
               </Dropdown>
-              <Dropdown label={locale === "de" ? "Deutsch" : "English"}>
-                <MenuButton active={locale === "de"} onClick={() => setLocale("de")}>Deutsch</MenuButton>
-                <MenuButton active={locale === "en"} onClick={() => setLocale("en")}>English</MenuButton>
+              <Dropdown label={LOCALE_LABELS[locale]}>
+                {LOCALES.map((code) => (
+                  <MenuButton key={code} active={locale === code} onClick={() => setLocale(code)}>
+                    {LOCALE_LABELS[code]}
+                  </MenuButton>
+                ))}
               </Dropdown>
             </nav>
             <div className="mt-auto">

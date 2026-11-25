@@ -11,7 +11,7 @@ import {
   roleFromUser,
   type AuthUser,
 } from "@/lib/auth-api";
-import type { Locale } from "@/lib/catalog";
+import { pickCopy, type Copy, type Locale } from "@/lib/catalog";
 import { clearCartRequest, fetchCart, syncCart, upsertCartItem } from "@/lib/commerce-api";
 
 export type Role = "customer" | "seller" | "admin";
@@ -66,7 +66,7 @@ function cartFromApi(items: { slug: string; quantity: number }[]): CartLine[] {
 type StoreValue = {
   locale: Locale;
   setLocale: (locale: Locale) => void;
-  t: (copy: Record<Locale, string>) => string;
+  t: (copy: Copy | Record<string, string | undefined>) => string;
   role: Role | null;
   setRole: (role: Role | null) => void;
   authUser: AuthUser | null;
@@ -276,7 +276,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<StoreValue>(() => ({
     locale,
     setLocale: setLocaleState,
-    t: (copy) => copy[locale],
+    t: (copy) => pickCopy(copy, locale),
     role,
     setRole: setRoleState,
     authUser,

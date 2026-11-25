@@ -35,7 +35,7 @@ export default function AdminProductEditPage() {
   return (
     <AdminShell>
       <AdminGate permission="admin.products">
-        {loading ? <p className="text-sm text-muted">Loading…</p> : null}
+        {loading ? <p className="text-sm text-muted">{t({ de: "Wird geladen…", en: "Loading…" })}</p> : null}
         {error ? <p className="text-sm text-copper">{error}</p> : null}
         {product ? <AdminProductForm product={product} /> : null}
       </AdminGate>

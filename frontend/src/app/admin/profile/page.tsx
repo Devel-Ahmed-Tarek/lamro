@@ -39,7 +39,7 @@ export default function AdminProfilePage() {
       await refreshMe();
       setSaved(t({ de: "Foto gespeichert.", en: "Photo saved." }));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t({ de: "Upload fehlgeschlagen.", en: "Upload failed." }));
+      setError(err instanceof ApiError ? err.message : t({ de: "Hochladen fehlgeschlagen.", en: "Upload failed." }));
     } finally {
       setBusy(false);
     }
@@ -87,7 +87,7 @@ export default function AdminProfilePage() {
   return (
     <AdminShell>
       <h1 className="text-3xl font-semibold tracking-tight">{t({ de: "Profil", en: "Profile" })}</h1>
-      <p className="mt-2 max-w-xl text-sm text-muted">{t({ de: "Name, Kontakt und Profilbild — gespeichert über Sanctum API.", en: "Name, contact, and photo — saved through the Sanctum API." })}</p>
+      <p className="mt-2 max-w-xl text-sm text-muted">{t({ de: "Name, Kontakt und Profilbild — werden in Ihrem Konto gespeichert.", en: "Name, contact, and photo — saved to your account." })}</p>
 
       <form onSubmit={save} className="mt-8 grid max-w-2xl gap-6 lg:grid-cols-[180px_1fr]">
         <div className="space-y-3">
