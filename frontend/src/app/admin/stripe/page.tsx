@@ -330,16 +330,6 @@ export default function AdminStripePage() {
                 autoComplete="new-password"
               />
             </Field>
-            <Field label={t({ en: "Webhook signing secret (whsec_…)" })}>
-              <input
-                className={fieldClass}
-                type="password"
-                value={webhookSecret}
-                onChange={(e) => setWebhookSecret(e.target.value)}
-                placeholder={settings.webhook_secret_set ? savedPlaceholder(settings.webhook_secret_hint) : "whsec_…"}
-                autoComplete="new-password"
-              />
-            </Field>
           </div>
           <div className="mt-4 flex flex-wrap gap-3">
             <button type="button" disabled={busy} onClick={() => void onTest()} className="rounded-full border border-line px-4 py-2 text-sm disabled:opacity-60">
@@ -369,7 +359,12 @@ export default function AdminStripePage() {
               {copied ? t({ en: "Copied" }) : t({ en: "Copy URL" })}
             </button>
           </div>
-          <a href={settings.setup.dashboard_webhooks_url} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm text-copper underline-offset-4 hover:underline">
+          <a
+            href={settings.setup.dashboard_webhooks_url}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-copper px-4 py-2 text-sm font-medium text-paper"
+          >
             {t({ en: "Open Stripe Webhooks" })}
           </a>
           <div className="mt-3">
@@ -378,6 +373,39 @@ export default function AdminStripePage() {
                 en: "Recommended event: checkout.session.completed. Production rejects unsigned webhooks.",
               })}
             </Notice>
+          </div>
+
+          <div className="mt-6 border-t border-line pt-5">
+            <Field label={t({ en: "Webhook signing secret (whsec_…)" })}>
+              <input
+                className={fieldClass}
+                type="password"
+                value={webhookSecret}
+                onChange={(e) => setWebhookSecret(e.target.value)}
+                placeholder={settings.webhook_secret_set ? savedPlaceholder(settings.webhook_secret_hint) : "whsec_…"}
+                autoComplete="new-password"
+              />
+            </Field>
+            <p className="mt-2 text-sm text-muted">
+              <span className="font-medium text-ink">{t({ en: "What is this?" })}</span>{" "}
+              {t({
+                en: "This is not your API secret key. After you create a webhook endpoint in Stripe, Stripe shows a Signing secret that starts with whsec_. Paste that value here so our server can verify that payment events really came from Stripe.",
+              })}
+            </p>
+            <p className="mt-2 text-sm text-muted">
+              <span className="font-medium text-ink">{t({ en: "How to get it" })}</span>{" "}
+              {t({
+                en: "1) Copy the Webhook URL above. 2) Open Stripe Webhooks and click Add endpoint. 3) Paste our URL, choose event checkout.session.completed, save. 4) Open the endpoint → Reveal → copy Signing secret (whsec_…) → paste it in this field.",
+              })}
+            </p>
+            <a
+              href={settings.setup.dashboard_webhooks_url}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-flex text-sm font-medium text-copper underline-offset-4 hover:underline"
+            >
+              {t({ en: "Open the Stripe page to get whsec_…" })} →
+            </a>
           </div>
         </section>
 
