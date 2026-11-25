@@ -63,23 +63,21 @@ class StripeSetting extends Model
 
     public static function current(): self
     {
-        return Cache::remember('stripe_settings_current', 30, function () {
-            $row = static::query()->first();
-            if ($row) {
-                return $row;
-            }
+        $row = static::query()->first();
+        if ($row) {
+            return $row;
+        }
 
-            return static::query()->create([
-                'enabled' => FeatureSetting::enabled('payment_stripe', false),
-                'demo_mode' => (bool) config('services.stripe.demo', true),
-                'publishable_key' => config('services.stripe.key') ?: null,
-                'secret_key' => config('services.stripe.secret') ?: null,
-                'webhook_secret' => config('services.stripe.webhook_secret') ?: null,
-                'payment_method_types' => static::defaultPaymentMethodTypes(),
-                'capture_method' => 'automatic',
-                'billing_address_collection' => 'auto',
-            ]);
-        });
+        return static::query()->create([
+            'enabled' => FeatureSetting::enabled('payment_stripe', false),
+            'demo_mode' => (bool) config('services.stripe.demo', true),
+            'publishable_key' => config('services.stripe.key') ?: null,
+            'secret_key' => config('services.stripe.secret') ?: null,
+            'webhook_secret' => config('services.stripe.webhook_secret') ?: null,
+            'payment_method_types' => static::defaultPaymentMethodTypes(),
+            'capture_method' => 'automatic',
+            'billing_address_collection' => 'auto',
+        ]);
     }
 
     public static function flushCache(): void
