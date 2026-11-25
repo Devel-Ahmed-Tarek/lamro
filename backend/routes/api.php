@@ -21,7 +21,11 @@ use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\AiProductController;
 use App\Http\Controllers\Api\V1\CompanyStockListingController;
 use App\Http\Controllers\Api\V1\StripeController;
+use App\Http\Controllers\Api\V1\CmsController;
+use App\Http\Controllers\Api\V1\ReportsController;
+use App\Http\Controllers\Api\V1\ReturnsController;
 use App\Http\Controllers\Api\V1\SystemController;
+use App\Http\Controllers\Api\V1\TaxController;
 use App\Http\Controllers\Api\V1\WatchlistController;
 use Illuminate\Support\Facades\Route;
 
@@ -54,8 +58,8 @@ Route::prefix('v1')->group(function () {
     Route::get('/payments/stripe/config', [StripeController::class, 'config']);
     Route::post('/payments/stripe/webhook', [StripeController::class, 'webhook']);
     Route::get('/shipping-methods', [PlatformController::class, 'shippingMethods']);
-    Route::get('/cms/pages/{slug}', [PlatformController::class, 'cmsPage']);
-    Route::get('/cms/banners', [PlatformController::class, 'cmsBanners']);
+    Route::get('/cms/pages/{slug}', [CmsController::class, 'show']);
+    Route::get('/cms/banners', [CmsController::class, 'banners']);
     Route::get('/sitemap.xml', [SystemController::class, 'sitemap']);
     Route::get('/robots.txt', [SystemController::class, 'robots']);
     Route::get('/tax', [SystemController::class, 'publicTax']);
@@ -101,8 +105,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/orders', [OrderController::class, 'index']);
         Route::get('/orders/{order}', [OrderController::class, 'show']);
         Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
-        Route::post('/orders/{order}/returns', [PlatformController::class, 'requestReturn'])->middleware('verified.email');
-        Route::get('/me/returns', [PlatformController::class, 'myReturns']);
+        Route::post('/orders/{order}/returns', [ReturnsController::class, 'store'])->middleware('verified.email');
+        Route::get('/me/returns', [ReturnsController::class, 'mine']);
         Route::post('/orders/{order}/stripe/checkout', [StripeController::class, 'start'])->middleware(['verified.email', 'feature:payment_stripe']);
         Route::post('/payments/{payment}/stripe/demo-complete', [StripeController::class, 'demoComplete'])->middleware('verified.email');
         Route::post('/payments/stripe/sync', [StripeController::class, 'syncSession']);
@@ -194,8 +198,8 @@ Route::prefix('v1')->group(function () {
                 Route::put('/orders/{order}/status', [OrderController::class, 'adminUpdateStatus']);
                 Route::post('/orders/{order}/tracking', [PlatformController::class, 'addTracking']);
                 Route::post('/orders/{order}/refund', [PlatformController::class, 'refundOrder']);
-                Route::get('/returns', [PlatformController::class, 'adminReturns']);
-                Route::post('/returns/{orderReturn}/status', [PlatformController::class, 'adminReturnUpdate']);
+                Route::get('/returns', [ReturnsController::class, 'adminIndex']);
+                Route::post('/returns/{orderReturn}/status', [ReturnsController::class, 'adminUpdate']);
             });
 
             Route::middleware('permission:admin.payments')->group(function () {
@@ -207,8 +211,8 @@ Route::prefix('v1')->group(function () {
             Route::middleware('permission:admin.invoices')->group(function () {
                 Route::get('/invoices', [InvoiceController::class, 'adminIndex']);
                 Route::post('/invoices/{invoice}/credit-notes', [PlatformController::class, 'issueCreditNote']);
-                Route::get('/tax-settings', [PlatformController::class, 'taxSettings']);
-                Route::put('/tax-settings', [PlatformController::class, 'updateTaxSettings']);
+                Route::get('/tax-settings', [TaxController::class, 'show']);
+                Route::put('/tax-settings', [TaxController::class, 'update']);
             });
 
             Route::middleware('permission:admin.messages')->group(function () {
@@ -230,8 +234,8 @@ Route::prefix('v1')->group(function () {
             });
 
             Route::middleware('permission:admin.cms')->group(function () {
-                Route::get('/cms/pages', [PlatformController::class, 'adminCmsPages']);
-                Route::put('/cms/pages/{cmsPage}', [PlatformController::class, 'adminCmsPageUpdate']);
+                Route::get('/cms/pages', [CmsController::class, 'adminIndex']);
+                Route::put('/cms/pages/{cmsPage}', [CmsController::class, 'adminUpdate']);
             });
 
             Route::middleware('permission:admin.features')->group(function () {
@@ -251,8 +255,8 @@ Route::prefix('v1')->group(function () {
             });
 
             Route::middleware('permission:admin.reports')->group(function () {
-                Route::get('/reports', [PlatformController::class, 'adminReports']);
-                Route::get('/reports/export', [PlatformController::class, 'adminReportsExport']);
+                Route::get('/reports', [ReportsController::class, 'index']);
+                Route::get('/reports/export', [ReportsController::class, 'export']);
             });
 
             Route::middleware('permission:admin.audit')->group(function () {

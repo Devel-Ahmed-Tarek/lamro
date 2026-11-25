@@ -31,7 +31,7 @@ export default function AuctionPage() {
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const { auction, setAuction, connected, realtime } = useAuctionRealtime(slug, seed);
+  const { auction, setAuction, connected, realtime, extendedNotice, clearExtendedNotice } = useAuctionRealtime(slug, seed);
 
   const load = useCallback(async () => {
     try {
@@ -181,6 +181,23 @@ export default function AuctionPage() {
                 ? `${t({ de: "Endet in etwa", en: "Ends in about" })} ${formatEndsIn(auction.ends_in_seconds, locale)}`
                 : t({ de: "Beendet", en: "Ended" })}
           </p>
+          {live && auction.anti_snipe_window_sec > 0 ? (
+            <p className="mt-2 text-xs text-muted">
+              {t({
+                en: `Anti-snipe: last ${Math.round(auction.anti_snipe_window_sec / 60)} min extend by ${Math.round(auction.anti_snipe_extend_sec / 60)} min.`,
+              })}
+            </p>
+          ) : null}
+          {extendedNotice ? (
+            <div className="mt-3">
+              <Notice>
+                {t({ en: "Auction extended after a late bid." })}{" "}
+                <button type="button" className="text-copper underline" onClick={clearExtendedNotice}>
+                  {t({ en: "Close" })}
+                </button>
+              </Notice>
+            </div>
+          ) : null}
 
           {!loggedIn ? (
             <div className="mt-4 space-y-2">

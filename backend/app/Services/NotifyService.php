@@ -3,12 +3,12 @@
 namespace App\Services;
 
 use App\Events\InboxNotificationCreated;
+use App\Jobs\SendUserMailJob;
 use App\Models\InboxNotification;
 use App\Models\NotificationTemplate;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 class NotifyService
 {
@@ -32,11 +32,9 @@ class NotifyService
         $this->push($user, $type, $subject, $body, $vars);
 
         try {
-            Mail::raw($body, function ($message) use ($user, $subject) {
-                $message->to($user->email, $user->name)->subject($subject);
-            });
+            SendUserMailJob::dispatch($user->email, $user->name, $subject, $body);
         } catch (\Throwable $e) {
-            Log::warning('notify.mail_failed', ['type' => $type, 'user' => $user->id, 'error' => $e->getMessage()]);
+            Log::warning('notify.mail_dispatch_failed', ['type' => $type, 'user' => $user->id, 'error' => $e->getMessage()]);
         }
     }
 

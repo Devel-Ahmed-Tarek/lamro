@@ -96,7 +96,7 @@ export default function ProductPage() {
         {image ? (
           // Remote catalog media may come from storage hosts outside the Next image allowlist.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={image.url} alt="" className="min-h-72 w-full rounded-3xl object-cover" />
+          <img src={image.url} alt={t(product.name)} className="min-h-72 w-full rounded-3xl object-cover" />
         ) : (
           <Plate brand={product.manufacturer} part={product.partNumber} />
         )}

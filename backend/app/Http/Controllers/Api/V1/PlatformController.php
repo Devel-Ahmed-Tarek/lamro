@@ -196,38 +196,9 @@ class PlatformController extends Controller
         return response()->json(['data' => $tier], 201);
     }
 
-    public function cmsPage(string $slug): JsonResponse
-    {
-        $page = CmsPage::query()->where('slug', $slug)->where('status', 'published')->firstOrFail();
 
-        return response()->json(['data' => $page]);
-    }
 
-    public function cmsBanners(): JsonResponse
-    {
-        return response()->json([
-            'data' => CmsBanner::query()->where('is_active', true)->orderBy('sort')->get(),
-        ]);
-    }
 
-    public function adminCmsPages(): JsonResponse
-    {
-        return response()->json(['data' => CmsPage::query()->orderBy('slug')->get()]);
-    }
-
-    public function adminCmsPageUpdate(Request $request, CmsPage $cmsPage): JsonResponse
-    {
-        $data = $request->validate([
-            'title' => ['sometimes', 'array'],
-            'body' => ['sometimes', 'array'],
-            'meta_title' => ['nullable', 'string'],
-            'meta_description' => ['nullable', 'string'],
-            'status' => ['nullable', Rule::in(['draft', 'published'])],
-        ]);
-        $cmsPage->update($data);
-
-        return response()->json(['data' => $cmsPage->fresh()]);
-    }
 
     public function adminCustomers(Request $request): JsonResponse
     {
@@ -321,44 +292,7 @@ class PlatformController extends Controller
         };
     }
 
-    public function adminReports(): JsonResponse
-    {
-        return response()->json([
-            'data' => [
-                'orders_total' => Order::query()->count(),
-                'orders_paid' => Order::query()->whereIn('status', ['paid', 'processing', 'shipped', 'delivered'])->count(),
-                'revenue_cents' => (int) Order::query()->whereIn('status', ['paid', 'processing', 'shipped', 'delivered'])->sum('total_cents'),
-                'invoices' => Invoice::query()->count(),
-                'open_inquiries' => Inquiry::query()->where('status', 'open')->count(),
-                'customers' => User::query()->role('customer')->count(),
-                'sales_split' => [
-                    'store' => (int) Order::query()->where('source', 'store')->whereIn('status', ['paid', 'processing', 'shipped', 'delivered'])->sum('total_cents'),
-                    'auction' => (int) Order::query()->where('source', 'auction')->whereIn('status', ['paid', 'processing', 'shipped', 'delivered'])->sum('total_cents'),
-                ],
-            ],
-        ]);
-    }
 
-    public function adminReportsExport(): \Symfony\Component\HttpFoundation\StreamedResponse
-    {
-        $orders = Order::query()->with('user')->latest()->limit(500)->get();
-
-        return response()->streamDownload(function () use ($orders) {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, ['number', 'source', 'status', 'total', 'email', 'created_at']);
-            foreach ($orders as $order) {
-                fputcsv($out, [
-                    $order->number,
-                    $order->source,
-                    $order->status,
-                    $order->total,
-                    $order->user?->email,
-                    $order->created_at,
-                ]);
-            }
-            fclose($out);
-        }, 'jala-orders.csv', ['Content-Type' => 'text/csv']);
-    }
 
     public function adminNotifications(): JsonResponse
     {
@@ -411,89 +345,10 @@ class PlatformController extends Controller
         return response()->json(['data' => ['ok' => true]]);
     }
 
-    public function taxSettings(): JsonResponse
-    {
-        return response()->json(['data' => TaxSetting::current()]);
-    }
 
-    public function updateTaxSettings(Request $request): JsonResponse
-    {
-        $data = $request->validate([
-            'rate_bps' => ['sometimes', 'integer', 'min:0', 'max:10000'],
-            'currency' => ['sometimes', 'string', 'size:3'],
-            'company_name' => ['sometimes', 'string'],
-            'company_address' => ['nullable', 'string'],
-            'vat_id' => ['nullable', 'string'],
-            'bank_iban' => ['nullable', 'string'],
-            'bank_bic' => ['nullable', 'string'],
-            'bank_name' => ['nullable', 'string'],
-        ]);
-        $tax = TaxSetting::current();
-        $tax->update($data);
-        $this->audit->log($request->user(), 'tax.updated', $tax);
 
-        return response()->json(['data' => $tax->fresh()]);
-    }
 
-    public function requestReturn(Request $request, Order $order): JsonResponse
-    {
-        abort_unless($order->user_id === $request->user()->id, 403);
-        if (! in_array($order->status, ['paid', 'processing', 'shipped', 'delivered'], true)) {
-            throw ValidationException::withMessages(['order' => ['Return not allowed for this order status.']]);
-        }
-        $data = $request->validate([
-            'reason' => ['required', 'string', 'max:190'],
-            'message' => ['nullable', 'string', 'max:5000'],
-        ]);
-        $ret = OrderReturn::query()->create([
-            'order_id' => $order->id,
-            'user_id' => $request->user()->id,
-            'status' => 'requested',
-            'reason' => $data['reason'],
-            'message' => $data['message'] ?? null,
-        ]);
-        $order->update(['status' => 'return_requested']);
 
-        $this->notify->notifyAdmins(
-            'admin.return_requested',
-            'Return requested',
-            $request->user()->name.' requested return for '.$order->number.': '.$data['reason'],
-            [
-                'order_id' => $order->id,
-                'return_id' => $ret->id,
-                'order_number' => $order->number,
-            ],
-            '/admin/returns',
-        );
-
-        return response()->json(['data' => $ret], 201);
-    }
-
-    public function adminReturns(): JsonResponse
-    {
-        return response()->json([
-            'data' => OrderReturn::query()->with(['order', 'user'])->latest()->limit(100)->get(),
-        ]);
-    }
-
-    public function adminReturnUpdate(Request $request, OrderReturn $orderReturn): JsonResponse
-    {
-        $data = $request->validate([
-            'status' => ['required', Rule::in(['approved', 'rejected', 'returned', 'refunded'])],
-            'admin_note' => ['nullable', 'string'],
-            'auto_refund' => ['nullable', 'boolean'],
-        ]);
-
-        $ret = $this->refunds->processReturn(
-            $orderReturn,
-            $request->user(),
-            $data['status'],
-            $data['admin_note'] ?? null,
-            $data['auto_refund'] ?? ($data['status'] === 'refunded'),
-        );
-
-        return response()->json(['data' => $ret]);
-    }
 
     public function refundOrder(Request $request, Order $order): JsonResponse
     {
@@ -521,17 +376,6 @@ class PlatformController extends Controller
         ]);
     }
 
-    public function myReturns(Request $request): JsonResponse
-    {
-        $items = OrderReturn::query()
-            ->where('user_id', $request->user()->id)
-            ->with('order')
-            ->latest()
-            ->limit(50)
-            ->get();
-
-        return response()->json(['data' => $items]);
-    }
 
     public function addTracking(Request $request, Order $order): JsonResponse
     {

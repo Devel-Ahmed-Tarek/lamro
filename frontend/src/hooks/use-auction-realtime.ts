@@ -7,6 +7,7 @@ import { getEcho, reverbEnabled } from "@/lib/echo";
 export function useAuctionRealtime(slug: string, initial: ApiAuction | null) {
   const [auction, setAuction] = useState<ApiAuction | null>(initial);
   const [connected, setConnected] = useState(false);
+  const [extendedNotice, setExtendedNotice] = useState(false);
 
   useEffect(() => {
     setAuction(initial);
@@ -24,6 +25,7 @@ export function useAuctionRealtime(slug: string, initial: ApiAuction | null) {
         if (payload.auction) setAuction(payload.auction);
       });
       channel.listen(".auction.extended", (payload: { ends_at?: string; ends_in_seconds?: number; version?: number }) => {
+        setExtendedNotice(true);
         setAuction((current) =>
           current
             ? {
@@ -68,5 +70,5 @@ export function useAuctionRealtime(slug: string, initial: ApiAuction | null) {
     return () => window.clearInterval(tick);
   }, [auction?.ends_at, auction?.status]);
 
-  return { auction, setAuction, connected, realtime: reverbEnabled() };
+  return { auction, setAuction, connected, realtime: reverbEnabled(), extendedNotice, clearExtendedNotice: () => setExtendedNotice(false) };
 }

@@ -15,7 +15,6 @@ use App\Models\TaxSetting;
 use App\Services\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
 
 class SystemController extends Controller
 {
@@ -100,8 +99,31 @@ class SystemController extends Controller
             $db = config('database.connections.sqlite.database');
             copy($db, $path);
         } else {
-            file_put_contents($path, '-- backup placeholder '.now()->toIso8601String()."\n");
-            Artisan::call('db:show');
+            $cfg = config('database.connections.'.$connection);
+            $host = (string) ($cfg['host'] ?? '127.0.0.1');
+            $port = (string) ($cfg['port'] ?? '3306');
+            $database = (string) ($cfg['database'] ?? '');
+            $username = (string) ($cfg['username'] ?? '');
+            $password = (string) ($cfg['password'] ?? '');
+            $dump = trim((string) shell_exec('command -v mysqldump'));
+            if ($dump === '' || $database === '') {
+                file_put_contents($path, '-- backup failed: mysqldump unavailable '.now()->toIso8601String()."\n");
+            } else {
+                $cmd = sprintf(
+                    '%s --host=%s --port=%s --user=%s --single-transaction --routines --triggers %s > %s 2>/dev/null',
+                    escapeshellcmd($dump),
+                    escapeshellarg($host),
+                    escapeshellarg($port),
+                    escapeshellarg($username),
+                    escapeshellarg($database),
+                    escapeshellarg($path),
+                );
+                $envPassword = 'MYSQL_PWD='.escapeshellarg($password);
+                exec($envPassword.' '.$cmd, $out, $code);
+                if ($code !== 0 || ! is_file($path) || filesize($path) < 32) {
+                    file_put_contents($path, '-- mysqldump failed code='.$code.' at '.now()->toIso8601String()."\n");
+                }
+            }
         }
         $backup = SystemBackup::query()->create([
             'path' => 'backups/'.$name,

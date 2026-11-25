@@ -6,6 +6,7 @@ use App\Models\FeatureSetting;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -132,24 +133,50 @@ class StripePaymentService
         $secret = (string) config('services.stripe.webhook_secret');
         if ($secret) {
             $event = Webhook::constructEvent($payload, (string) $signature, $secret);
+        } elseif (app()->isProduction()) {
+            throw ValidationException::withMessages([
+                'stripe' => ['Webhook signature is required in production.'],
+            ]);
         } else {
             $event = json_decode($payload, false, 512, JSON_THROW_ON_ERROR);
         }
 
+        $eventId = is_array($event) ? ($event['id'] ?? null) : ($event->id ?? null);
         $type = is_array($event) ? ($event['type'] ?? null) : ($event->type ?? null);
         $object = is_array($event)
             ? ($event['data']['object'] ?? null)
             : ($event->data->object ?? null);
 
+        if ($eventId) {
+            $exists = DB::table('stripe_webhook_events')->where('event_id', $eventId)->exists();
+            if ($exists) {
+                return ['received' => true, 'duplicate' => true];
+            }
+            DB::table('stripe_webhook_events')->insert([
+                'event_id' => $eventId,
+                'type' => $type,
+                'processed_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
         if ($type === 'checkout.session.completed' && $object) {
             $sessionId = is_array($object) ? ($object['id'] ?? null) : ($object->id ?? null);
             $paymentStatus = is_array($object) ? ($object['payment_status'] ?? null) : ($object->payment_status ?? null);
             $metadata = is_array($object) ? ($object['metadata'] ?? []) : ((array) ($object->metadata ?? []));
+            $paymentId = (int) ($metadata['payment_id'] ?? 0);
 
             if ($paymentStatus === 'paid' || $paymentStatus === 'no_payment_required') {
                 $payment = Payment::query()
-                    ->where('provider_id', $sessionId)
-                    ->orWhere('id', $metadata['payment_id'] ?? 0)
+                    ->where(function ($query) use ($sessionId, $paymentId) {
+                        if ($sessionId) {
+                            $query->where('provider_id', $sessionId);
+                        }
+                        if ($paymentId > 0) {
+                            $query->orWhere('id', $paymentId);
+                        }
+                    })
                     ->first();
 
                 if ($payment && $payment->status !== 'received') {
@@ -162,7 +189,7 @@ class StripePaymentService
             }
         }
 
-        Log::info('stripe.webhook', ['type' => $type]);
+        Log::info('stripe.webhook', ['type' => $type, 'event_id' => $eventId]);
 
         return ['received' => true];
     }

@@ -12,6 +12,7 @@ class HealthTest extends TestCase
         $this->getJson('/api/v1/health')
             ->assertOk()
             ->assertJsonPath('data.status', 'ok')
-            ->assertJsonPath('data.service', 'jala-api');
+            ->assertJsonPath('data.service', 'jala-api')
+            ->assertJsonStructure(['data' => ['checks' => ['database', 'queue', 'cache']]]);
     }
 }

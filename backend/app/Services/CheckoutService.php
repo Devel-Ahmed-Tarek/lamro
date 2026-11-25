@@ -21,6 +21,7 @@ class CheckoutService
     public function __construct(
         private InventoryService $inventory,
         private PricingService $pricing,
+        private TaxCalculator $taxCalculator,
         private AuditLogger $audit,
         private NotifyService $notify,
     ) {}
@@ -104,9 +105,9 @@ class CheckoutService
             }
 
             $taxable = max(0, $subtotal - $discount['discount_cents'] + $shippingCents);
-            $tax = TaxSetting::current();
-            $taxCents = (int) round($taxable * $tax->rate_bps / 10000);
-            $total = $taxable + $taxCents;
+            $shipCountry = strtoupper((string) ($shipping['shipping_country'] ?? $user->country ?? 'DE'));
+            $taxCalc = $this->taxCalculator->forOrder($user, $taxable, $shipCountry);
+            $total = $taxable + $taxCalc['tax_cents'];
 
             $order = Order::query()->create([
                 'number' => $this->nextOrderNumber(),
@@ -118,16 +119,17 @@ class CheckoutService
                 'shipping_cents' => $shippingCents,
                 'coupon_code' => $discount['coupon']?->code ?? $cart->coupon_code,
                 'shipping_method_id' => $shippingMethod?->id,
-                'tax_cents' => $taxCents,
+                'tax_cents' => $taxCalc['tax_cents'],
                 'total_cents' => $total,
-                'tax_rate_bps' => $tax->rate_bps,
-                'currency' => $tax->currency,
+                'tax_rate_bps' => $taxCalc['tax_rate_bps'],
+                'reverse_charge' => $taxCalc['reverse_charge'],
+                'currency' => $taxCalc['currency'],
                 'shipping_name' => $shipping['shipping_name'] ?? $user->name,
                 'shipping_line1' => $shipping['shipping_line1'] ?? null,
                 'shipping_city' => $shipping['shipping_city'] ?? null,
                 'shipping_postcode' => $shipping['shipping_postcode'] ?? null,
-                'shipping_country' => $shipping['shipping_country'] ?? 'DE',
-                'notes' => $shipping['notes'] ?? null,
+                'shipping_country' => $shipCountry,
+                'notes' => trim(($shipping['notes'] ?? '').($taxCalc['note'] ? "\n".$taxCalc['note'] : '')) ?: null,
             ]);
 
             foreach ($lines as $row) {
@@ -214,9 +216,9 @@ class CheckoutService
                 $shippingMethod = ShippingMethod::query()->where('is_active', true)->findOrFail($shipping['shipping_method_id']);
                 $shippingCents = (int) $shippingMethod->price_cents;
             }
-            $tax = TaxSetting::current();
             $taxable = $subtotal + $shippingCents;
-            $taxCents = (int) round($taxable * $tax->rate_bps / 10000);
+            $shipCountry = strtoupper((string) ($shipping['shipping_country'] ?? $user->country ?? 'DE'));
+            $taxCalc = $this->taxCalculator->forOrder($user, $taxable, $shipCountry);
 
             $order = Order::query()->create([
                 'number' => $this->nextOrderNumber(),
@@ -228,16 +230,17 @@ class CheckoutService
                 'discount_cents' => 0,
                 'shipping_cents' => $shippingCents,
                 'shipping_method_id' => $shippingMethod?->id,
-                'tax_cents' => $taxCents,
-                'total_cents' => $taxable + $taxCents,
-                'tax_rate_bps' => $tax->rate_bps,
-                'currency' => $tax->currency,
+                'tax_cents' => $taxCalc['tax_cents'],
+                'total_cents' => $taxable + $taxCalc['tax_cents'],
+                'tax_rate_bps' => $taxCalc['tax_rate_bps'],
+                'reverse_charge' => $taxCalc['reverse_charge'],
+                'currency' => $taxCalc['currency'],
                 'shipping_name' => $shipping['shipping_name'] ?? $user->name,
                 'shipping_line1' => $shipping['shipping_line1'] ?? null,
                 'shipping_city' => $shipping['shipping_city'] ?? null,
                 'shipping_postcode' => $shipping['shipping_postcode'] ?? null,
-                'shipping_country' => $shipping['shipping_country'] ?? 'DE',
-                'notes' => $shipping['notes'] ?? null,
+                'shipping_country' => $shipCountry,
+                'notes' => trim(($shipping['notes'] ?? '').($taxCalc['note'] ? "\n".$taxCalc['note'] : '')) ?: null,
             ]);
 
             $order->items()->create([
@@ -407,14 +410,17 @@ class CheckoutService
             'tax_cents' => $order->tax_cents,
             'total_cents' => $order->total_cents,
             'tax_rate_bps' => $order->tax_rate_bps,
+            'reverse_charge' => (bool) $order->reverse_charge,
             'issued_at' => now(),
             'snapshot' => [
                 'order_number' => $order->number,
+                'reverse_charge' => (bool) $order->reverse_charge,
                 'customer' => [
                     'name' => $order->user?->name ?? $order->guest_name,
                     'email' => $order->user?->email ?? $order->guest_email,
                     'company' => $order->user?->company_name,
                     'vat_id' => $order->user?->vat_id,
+                    'country' => $order->shipping_country ?? $order->user?->country,
                 ],
                 'shipping' => [
                     'name' => $order->shipping_name,

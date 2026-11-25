@@ -14,6 +14,7 @@ class Invoice extends Model
         'tax_cents',
         'total_cents',
         'tax_rate_bps',
+        'reverse_charge',
         'snapshot',
         'issued_at',
     ];
@@ -23,6 +24,7 @@ class Invoice extends Model
         return [
             'snapshot' => 'array',
             'issued_at' => 'datetime',
+            'reverse_charge' => 'boolean',
         ];
     }
 

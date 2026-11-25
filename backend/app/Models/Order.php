@@ -25,6 +25,7 @@ class Order extends Model
         'tax_cents',
         'total_cents',
         'tax_rate_bps',
+        'reverse_charge',
         'currency',
         'shipping_name',
         'shipping_line1',
@@ -42,6 +43,7 @@ class Order extends Model
         return [
             'paid_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'reverse_charge' => 'boolean',
         ];
     }
 

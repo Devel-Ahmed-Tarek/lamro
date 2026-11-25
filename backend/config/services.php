@@ -43,6 +43,10 @@ return [
         'frontend_url' => env('FRONTEND_URL', 'http://127.0.0.1:3000'),
     ],
 
+    'sentry' => [
+        'dsn' => env('SENTRY_DSN'),
+    ],
+
     /*
     | AI for product draft + translation.
     | provider: demo|groq|gemini|openai

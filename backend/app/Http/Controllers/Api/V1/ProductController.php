@@ -40,8 +40,22 @@ class ProductController extends Controller
                     ->orWhereRaw('LOWER(serial) LIKE ?', [$like])
                     ->orWhereRaw("LOWER(json_extract(name, '$.en')) LIKE ?", [$like])
                     ->orWhereRaw("LOWER(json_extract(name, '$.de')) LIKE ?", [$like])
+                    ->orWhereRaw("LOWER(json_extract(summary, '$.en')) LIKE ?", [$like])
+                    ->orWhereRaw("LOWER(json_extract(summary, '$.de')) LIKE ?", [$like])
+                    ->orWhereRaw("LOWER(json_extract(notes, '$.en')) LIKE ?", [$like])
+                    ->orWhereRaw("LOWER(json_extract(notes, '$.de')) LIKE ?", [$like])
                     ->orWhereHas('brand', function ($b) use ($like) {
                         $b->whereRaw("LOWER(json_extract(name, '$.en')) LIKE ?", [$like])
+                            ->orWhereRaw("LOWER(json_extract(name, '$.de')) LIKE ?", [$like])
+                            ->orWhereRaw('LOWER(slug) LIKE ?', [$like]);
+                    })
+                    ->orWhereHas('specs', function ($s) use ($like) {
+                        $s->whereRaw('LOWER(value) LIKE ?', [$like])
+                            ->orWhereRaw("LOWER(json_extract(label, '$.en')) LIKE ?", [$like])
+                            ->orWhereRaw("LOWER(json_extract(label, '$.de')) LIKE ?", [$like]);
+                    })
+                    ->orWhereHas('category', function ($c) use ($like) {
+                        $c->whereRaw("LOWER(json_extract(name, '$.en')) LIKE ?", [$like])
                             ->orWhereRaw("LOWER(json_extract(name, '$.de')) LIKE ?", [$like])
                             ->orWhereRaw('LOWER(slug) LIKE ?', [$like]);
                     });
@@ -248,6 +262,10 @@ class ProductController extends Controller
         );
 
         $path = $file->store("products/{$product->id}", 'public');
+        if ($type === 'image') {
+            // Best-effort WebP/JPEG derivative for faster delivery; original path stays canonical.
+            app(\App\Services\ImageVariantService::class)->makeThumbnail('public', $path);
+        }
         $sort = $data['sort'] ?? ((int) $product->media()->max('sort') + 1);
 
         $media = $product->media()->create([
