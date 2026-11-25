@@ -9,12 +9,13 @@ function timeAgo(iso: string | null | undefined, locale: string) {
   if (!iso) return "";
   const diff = Math.max(0, Date.now() - new Date(iso).getTime());
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return locale === "de" ? "gerade eben" : "just now";
-  if (mins < 60) return locale === "de" ? `vor ${mins} Min.` : `${mins}m`;
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  if (mins < 1) return rtf.format(0, "second");
+  if (mins < 60) return rtf.format(-mins, "minute");
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return locale === "de" ? `vor ${hours} Std.` : `${hours}h`;
+  if (hours < 24) return rtf.format(-hours, "hour");
   const days = Math.floor(hours / 24);
-  return locale === "de" ? `vor ${days} T.` : `${days}d`;
+  return rtf.format(-days, "day");
 }
 
 export function AdminNotificationBell() {

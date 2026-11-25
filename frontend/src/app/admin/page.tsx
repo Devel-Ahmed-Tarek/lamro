@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin-shell";
 import { ButtonLink } from "@/components/ui/button";
-import { formatMoney } from "@/lib/catalog";
+import { formatMoney, pickCopy } from "@/lib/catalog";
+import { enrichCopy } from "@/lib/i18n/public-dict";
 import { adminGet } from "@/lib/platform-api";
 import { useStore } from "@/lib/store";
+import type { Locale } from "@/lib/catalog";
 
 type OverviewActivity = {
   id: number;
@@ -30,13 +32,13 @@ type Overview = {
   activity: OverviewActivity[];
 };
 
-function relativeTime(iso: string | null | undefined, locale: string): string {
+function relativeTime(iso: string | null | undefined, locale: Locale | string): string {
   if (!iso) return "—";
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return "—";
   const diffSec = Math.round((then - Date.now()) / 1000);
   const abs = Math.abs(diffSec);
-  const rtf = new Intl.RelativeTimeFormat(locale === "de" ? "de" : "en", { numeric: "auto" });
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
   if (abs < 60) return rtf.format(diffSec, "second");
   const diffMin = Math.round(diffSec / 60);
   if (Math.abs(diffMin) < 60) return rtf.format(diffMin, "minute");
@@ -46,7 +48,7 @@ function relativeTime(iso: string | null | undefined, locale: string): string {
   return rtf.format(diffDay, "day");
 }
 
-function actionLabel(action: string, locale: string): string {
+function actionLabel(action: string, locale: Locale | string): string {
   const map: Record<string, { de: string; en: string }> = {
     "order.created": { de: "Neue Bestellung erstellt", en: "New order created" },
     "order.cancelled": { de: "Bestellung storniert", en: "Order cancelled" },
@@ -65,7 +67,7 @@ function actionLabel(action: string, locale: string): string {
     "tax.updated": { de: "Steuer aktualisiert", en: "Tax updated" },
   };
   const hit = map[action];
-  if (hit) return locale === "de" ? hit.de : hit.en;
+  if (hit) return pickCopy(enrichCopy(hit), locale as Locale);
   return action.replace(/\./g, " · ");
 }
 

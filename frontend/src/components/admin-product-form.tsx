@@ -222,10 +222,10 @@ export function AdminProductForm({ product }: { product?: ApiProduct | null }) {
       }));
       setAiProvider(draft.provider);
       setNotice(
-        t({
-          de: `KI-Entwurf bereit (${draft.provider}). Bitte prüfen, dann speichern.`,
-          en: `AI draft ready (${draft.provider}). Review, then save.`,
-        }),
+        `${t({
+          de: "KI-Entwurf bereit. Bitte prüfen, dann speichern.",
+          en: "AI draft ready. Review, then save.",
+        })} (${draft.provider})`,
       );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t({ de: "KI-Assistent fehlgeschlagen.", en: "AI failed." }));

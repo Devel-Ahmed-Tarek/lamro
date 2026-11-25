@@ -1,4 +1,5 @@
 import type { Copy } from "@/lib/catalog";
+import { ADMIN_DICT } from "@/lib/i18n/admin-dict";
 
 /**
  * Row layout: [en, ar, de, fr, it, es, tr, nl, pl, pt]
@@ -898,7 +899,8 @@ export const PUBLIC_DICT: Record<string, Copy> = Object.fromEntries(
 export function enrichCopy(copy: Copy | Record<string, string | undefined>): Copy {
   const en = typeof copy.en === "string" ? copy.en.trim() : "";
   if (!en) return copy as Copy;
-  const hit = PUBLIC_DICT[en];
+  const hit = ADMIN_DICT[en] ?? PUBLIC_DICT[en];
   if (!hit) return copy as Copy;
+  // Dictionary fills missing locales; explicit call-site values still win.
   return { ...hit, ...copy } as Copy;
 }
