@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Frame } from "@/components/shell";
 import { Notice, PageIntro } from "@/components/ui";
+import { pickCopy } from "@/lib/catalog";
 import { fetchCmsPage } from "@/lib/platform-api";
 import { useStore } from "@/lib/store";
 
@@ -22,8 +23,8 @@ export default function LegalPage() {
     const key = alias[slug] ?? slug;
     fetchCmsPage(key)
       .then((response) => {
-        setTitle(response.data.title[locale] || response.data.title.en);
-        setBody(response.data.body[locale] || response.data.body.en);
+        setTitle(pickCopy(response.data.title, locale));
+        setBody(pickCopy(response.data.body, locale));
       })
       .catch(() => setError(t({ de: "Seite nicht gefunden.", en: "Page not found." })));
   }, [slug, locale, t]);

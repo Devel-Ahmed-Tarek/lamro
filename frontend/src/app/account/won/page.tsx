@@ -5,13 +5,12 @@ import { useEffect, useState } from "react";
 import { Desk, useCustomerNav } from "@/components/desk";
 import { Button, Notice } from "@/components/ui";
 import { ApiError } from "@/lib/api";
-import { formatMoney, type Copy } from "@/lib/catalog";
+import { formatMoney, pickCopy, type Copy, type Locale } from "@/lib/catalog";
 import { checkoutAuctionWin, fetchWonAuctions, type ApiWonAuction } from "@/lib/commerce-api";
 import { useStore } from "@/lib/store";
 
-function label(name: Copy | undefined, locale: "de" | "en") {
-  if (!name) return "—";
-  return name[locale] || name.en || name.de;
+function label(name: Copy | undefined, locale: Locale) {
+  return pickCopy(name, locale) || "—";
 }
 
 export default function WonAuctionsPage() {

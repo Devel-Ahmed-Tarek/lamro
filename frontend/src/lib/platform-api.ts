@@ -12,7 +12,7 @@ export async function fetchShippingMethods() {
 }
 
 export async function fetchCmsPage(slug: string) {
-  return api<Envelope<{ slug: string; title: { de: string; en: string }; body: { de: string; en: string } }>>(`/api/v1/cms/pages/${slug}`, { auth: false });
+  return api<Envelope<{ slug: string; title: Record<string, string>; body: Record<string, string> }>>(`/api/v1/cms/pages/${slug}`, { auth: false });
 }
 
 export async function sendContact(payload: { name: string; email: string; subject?: string; message: string }) {

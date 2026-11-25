@@ -173,7 +173,7 @@ export async function cancelAuctionRequest(id: number) {
   return api<Envelope<ApiAuction>>(`/api/v1/admin/auctions/${id}/cancel`, { method: "POST" });
 }
 
-export function formatEndsIn(seconds: number | null | undefined, locale: "de" | "en") {
+export function formatEndsIn(seconds: number | null | undefined, locale: string) {
   if (seconds == null) return "—";
   const m = Math.floor(seconds / 60);
   const h = Math.floor(m / 60);
