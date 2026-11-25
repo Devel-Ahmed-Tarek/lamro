@@ -14,7 +14,7 @@ import {
 import { pickCopy, type Copy, type Locale } from "@/lib/catalog";
 import { clearCartRequest, fetchCart, syncCart, upsertCartItem } from "@/lib/commerce-api";
 import { enrichCopy } from "@/lib/i18n/public-dict";
-import { fetchWatchlist, toggleWatchlist } from "@/lib/platform-api";
+import { fetchFeatures, fetchWatchlist, toggleWatchlist } from "@/lib/platform-api";
 
 export type Role = "customer" | "seller" | "admin";
 
@@ -49,6 +49,30 @@ const defaultFeatures: Features = {
   coupons: true,
   quantityDiscounts: true,
 };
+
+const FEATURE_KEY_MAP: Record<string, FeatureKey> = {
+  store: "store",
+  auctions: "auctions",
+  buy_now: "buyNow",
+  buyNow: "buyNow",
+  make_offer: "makeOffer",
+  makeOffer: "makeOffer",
+  quote: "quote",
+  inquiry: "inquiry",
+  coupons: "coupons",
+  quantity_discounts: "quantityDiscounts",
+  quantityDiscounts: "quantityDiscounts",
+};
+
+function featuresFromApi(raw: Record<string, boolean> | undefined): Features {
+  const next = { ...defaultFeatures };
+  if (!raw) return next;
+  for (const [key, enabled] of Object.entries(raw)) {
+    const mapped = FEATURE_KEY_MAP[key];
+    if (mapped) next[mapped] = Boolean(enabled);
+  }
+  return next;
+}
 
 const emptyProfile: UserProfile = { name: "", email: "", phone: "", avatar: "" };
 
@@ -99,6 +123,9 @@ type StoreValue = {
   toggleWatch: (slug: string) => void;
   features: Features;
   toggleFeature: (key: FeatureKey) => void;
+  cartNotice: string;
+  clearCartNotice: () => void;
+  maintenance: boolean;
   ready: boolean;
 };
 
@@ -112,11 +139,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [watch, setWatch] = useState<string[]>([]);
   const [features, setFeatures] = useState<Features>(defaultFeatures);
+  const [maintenance, setMaintenance] = useState(false);
+  const [cartNotice, setCartNotice] = useState("");
   const [ready, setReady] = useState(false);
   const cartRef = useRef<CartLine[]>([]);
   cartRef.current = cart;
   const watchRef = useRef<string[]>([]);
   watchRef.current = watch;
+
+  const hydrateFeatures = useCallback(async () => {
+    try {
+      const response = await fetchFeatures();
+      const raw = response.data ?? {};
+      setFeatures(featuresFromApi(raw));
+      setMaintenance(Boolean(raw.maintenance_mode));
+    } catch {
+      /* keep defaults */
+    }
+  }, []);
 
   const pullServerCart = useCallback(async () => {
     if (!getToken()) return;
@@ -164,7 +204,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         profile?: UserProfile;
         cart?: CartLine[];
         watch?: string[];
-        features?: Features;
       };
       if (parsed.locale) setLocaleState(parsed.locale);
       if (parsed.role !== undefined) setRoleState(parsed.role);
@@ -177,8 +216,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         localWatch = parsed.watch;
         setWatch(parsed.watch);
       }
-      if (parsed.features) setFeatures({ ...defaultFeatures, ...parsed.features });
     }
+
+    void hydrateFeatures();
 
     const token = getToken();
     if (!token) {
@@ -217,12 +257,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setAuthUser(null);
       })
       .finally(() => setReady(true));
-  }, [pushLocalThenPull, pushLocalWatchThenPull]);
+  }, [pushLocalThenPull, pushLocalWatchThenPull, hydrateFeatures]);
 
   useEffect(() => {
     if (!ready) return;
-    localStorage.setItem("jala-ui", JSON.stringify({ locale, role, profile, cart, watch, features }));
-  }, [ready, locale, role, profile, cart, watch, features]);
+    localStorage.setItem("jala-ui", JSON.stringify({ locale, role, profile, cart, watch }));
+  }, [ready, locale, role, profile, cart, watch]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const onChange = () => {
+      void hydrateFeatures();
+    };
+    window.addEventListener('jala-features-changed', onChange);
+    const timer = window.setInterval(onChange, 60_000);
+    return () => {
+      window.removeEventListener('jala-features-changed', onChange);
+      window.clearInterval(timer);
+    };
+  }, [ready, hydrateFeatures]);
 
   const applyAuthUser = useCallback(async (user: AuthUser) => {
     setAuthUser(user);
@@ -293,37 +346,67 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [applyAuthUser]);
 
   const addToCart = useCallback((slug: string, qty = 1) => {
-    setCart((current) => {
-      const line = current.find((item) => item.slug === slug);
-      const nextQty = (line?.qty ?? 0) + qty;
-      const next = line
-        ? current.map((item) => (item.slug === slug ? { ...item, qty: nextQty } : item))
-        : [...current, { slug, qty }];
-      if (getToken() && authUser && !isAdminUser(authUser)) {
-        void upsertCartItem({ slug, quantity: nextQty }).catch(() => undefined);
-      }
-      return next;
-    });
-  }, [authUser]);
+    const previous = cartRef.current;
+    const line = previous.find((item) => item.slug === slug);
+    const nextQty = (line?.qty ?? 0) + qty;
+    const next = line
+      ? previous.map((item) => (item.slug === slug ? { ...item, qty: nextQty } : item))
+      : [...previous, { slug, qty }];
+    setCart(next);
+    setCartNotice("");
+    if (getToken() && authUser && !isAdminUser(authUser)) {
+      void upsertCartItem({ slug, quantity: nextQty })
+        .then(() => pullServerCart())
+        .catch(async () => {
+          setCart(previous);
+          setCartNotice("Could not update cart. Please try again.");
+          try {
+            await pullServerCart();
+          } catch {
+            /* keep rolled-back local cart */
+          }
+        });
+    }
+  }, [authUser, pullServerCart]);
 
   const setQty = useCallback((slug: string, qty: number) => {
-    setCart((current) => {
-      const next = qty <= 0
-        ? current.filter((item) => item.slug !== slug)
-        : current.map((item) => (item.slug === slug ? { ...item, qty } : item));
-      if (getToken() && authUser && !isAdminUser(authUser)) {
-        void upsertCartItem({ slug, quantity: Math.max(0, qty) }).catch(() => undefined);
-      }
-      return next;
-    });
-  }, [authUser]);
+    const previous = cartRef.current;
+    const next = qty <= 0
+      ? previous.filter((item) => item.slug !== slug)
+      : previous.map((item) => (item.slug === slug ? { ...item, qty } : item));
+    setCart(next);
+    setCartNotice("");
+    if (getToken() && authUser && !isAdminUser(authUser)) {
+      void upsertCartItem({ slug, quantity: Math.max(0, qty) })
+        .then(() => pullServerCart())
+        .catch(async () => {
+          setCart(previous);
+          setCartNotice("Could not update cart. Please try again.");
+          try {
+            await pullServerCart();
+          } catch {
+            /* keep rolled-back local cart */
+          }
+        });
+    }
+  }, [authUser, pullServerCart]);
 
   const clearCart = useCallback(() => {
+    const previous = cartRef.current;
     setCart([]);
+    setCartNotice("");
     if (getToken() && authUser && !isAdminUser(authUser)) {
-      void clearCartRequest().catch(() => undefined);
+      void clearCartRequest().catch(async () => {
+        setCart(previous);
+        setCartNotice("Could not clear cart. Please try again.");
+        try {
+          await pullServerCart();
+        } catch {
+          /* keep previous */
+        }
+      });
     }
-  }, [authUser]);
+  }, [authUser, pullServerCart]);
 
   const value = useMemo<StoreValue>(() => ({
     locale,
@@ -351,15 +434,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setWatch((current) => {
         const next = current.includes(slug) ? current.filter((item) => item !== slug) : [...current, slug];
         if (getToken() && authUser && !isAdminUser(authUser)) {
-          void toggleWatchlist(slug).catch(() => undefined);
+          void toggleWatchlist(slug)
+            .then(async () => {
+              try {
+                const response = await fetchWatchlist();
+                setWatch(
+                  response.data
+                    .map((row) => row.product?.slug)
+                    .filter((value): value is string => Boolean(value)),
+                );
+              } catch {
+                /* keep optimistic */
+              }
+            })
+            .catch(() => setWatch(current));
         }
         return next;
       });
     },
     features,
     toggleFeature: (key) => setFeatures((current) => ({ ...current, [key]: !current[key] })),
+    cartNotice,
+    clearCartNotice: () => setCartNotice(""),
+    maintenance,
     ready,
-  }), [locale, role, authUser, profile, loginAdmin, loginAuth, registerAuth, logoutAuth, refreshMe, cart, addToCart, setQty, clearCart, pullServerCart, watch, features, ready]);
+  }), [locale, role, authUser, profile, loginAdmin, loginAuth, registerAuth, logoutAuth, refreshMe, cart, addToCart, setQty, clearCart, pullServerCart, watch, features, cartNotice, maintenance, ready]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

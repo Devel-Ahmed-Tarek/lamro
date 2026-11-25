@@ -50,12 +50,12 @@ class OrderController extends Controller
     public function checkout(Request $request): JsonResponse
     {
         $shipping = $request->validate([
-            'shipping_name' => ['nullable', 'string', 'max:255'],
-            'shipping_line1' => ['nullable', 'string', 'max:255'],
-            'shipping_city' => ['nullable', 'string', 'max:255'],
-            'shipping_postcode' => ['nullable', 'string', 'max:32'],
-            'shipping_country' => ['nullable', 'string', 'size:2'],
-            'shipping_method_id' => ['nullable', 'integer', 'exists:shipping_methods,id'],
+            'shipping_name' => ['required', 'string', 'max:255'],
+            'shipping_line1' => ['required', 'string', 'max:255'],
+            'shipping_city' => ['required', 'string', 'max:255'],
+            'shipping_postcode' => ['required', 'string', 'max:32'],
+            'shipping_country' => ['required', 'string', 'size:2'],
+            'shipping_method_id' => ['required', 'integer', 'exists:shipping_methods,id'],
             'payment_method' => ['nullable', 'in:bank_transfer,stripe'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
@@ -78,12 +78,12 @@ class OrderController extends Controller
     public function checkoutAuction(Request $request, Auction $auction): JsonResponse
     {
         $shipping = $request->validate([
-            'shipping_name' => ['nullable', 'string', 'max:255'],
-            'shipping_line1' => ['nullable', 'string', 'max:255'],
-            'shipping_city' => ['nullable', 'string', 'max:255'],
-            'shipping_postcode' => ['nullable', 'string', 'max:32'],
-            'shipping_country' => ['nullable', 'string', 'size:2'],
-            'shipping_method_id' => ['nullable', 'integer', 'exists:shipping_methods,id'],
+            'shipping_name' => ['required', 'string', 'max:255'],
+            'shipping_line1' => ['required', 'string', 'max:255'],
+            'shipping_city' => ['required', 'string', 'max:255'],
+            'shipping_postcode' => ['required', 'string', 'max:32'],
+            'shipping_country' => ['required', 'string', 'size:2'],
+            'shipping_method_id' => ['required', 'integer', 'exists:shipping_methods,id'],
             'payment_method' => ['nullable', 'in:bank_transfer,stripe'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);

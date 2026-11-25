@@ -155,26 +155,3 @@ export const defaultAdminProfile: UserProfile = {
   avatar: "",
 };
 
-/** Demo accounts for the UI preview (no real auth). */
-export function resolveLogin(email: string, password: string): { role: Role; profile: UserProfile } | null {
-  const normalized = email.trim().toLowerCase();
-  if (!password) return null;
-
-  if (normalized === "admin@jala.de" && password === "admin") {
-    return { role: "admin", profile: { ...defaultAdminProfile } };
-  }
-  if (normalized === "seller@jala.de" && password === "seller") {
-    return {
-      role: "seller",
-      profile: { name: "Nordwerk Automation", email: normalized, phone: "", avatar: "" },
-    };
-  }
-  if ((normalized === "customer@jala.de" || normalized.includes("@")) && password.length >= 4) {
-    if (normalized === "admin@jala.de" || normalized === "seller@jala.de") return null;
-    return {
-      role: "customer",
-      profile: { name: "Demo Kunde", email: normalized, phone: "", avatar: "" },
-    };
-  }
-  return null;
-}

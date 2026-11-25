@@ -21,42 +21,50 @@ use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\AiProductController;
 use App\Http\Controllers\Api\V1\CompanyStockListingController;
 use App\Http\Controllers\Api\V1\StripeController;
+use App\Http\Controllers\Api\V1\SystemController;
+use App\Http\Controllers\Api\V1\WatchlistController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     Route::get('/health', HealthController::class);
-    Route::post('/auth/register', [AuthController::class, 'register']);
-    Route::post('/auth/login', [AuthController::class, 'login']);
-    Route::post('/auth/forgot-password', [PasswordController::class, 'forgot']);
-    Route::post('/auth/reset-password', [PasswordController::class, 'reset']);
-    Route::post('/auth/verify-email', [AuthController::class, 'verifyEmail']);
+    Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:auth');
+    Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:auth');
+    Route::post('/auth/forgot-password', [PasswordController::class, 'forgot'])->middleware('throttle:auth');
+    Route::post('/auth/reset-password', [PasswordController::class, 'reset'])->middleware('throttle:auth');
+    Route::post('/auth/verify-email', [AuthController::class, 'verifyEmail'])->middleware('throttle:auth');
 
-    Route::get('/categories', [CategoryController::class, 'index']);
-    Route::get('/categories/{slug}', [CategoryController::class, 'show']);
-    Route::get('/brands', [BrandController::class, 'index']);
-    Route::get('/brands/{slug}', [BrandController::class, 'show']);
-    Route::get('/products', [ProductController::class, 'index']);
-    Route::get('/products/{slug}', [ProductController::class, 'show']);
-    Route::get('/auctions', [AuctionController::class, 'index']);
-    Route::get('/auctions/{slug}', [AuctionController::class, 'show']);
-    Route::post('/inquiries', [InquiryController::class, 'store']);
-    Route::post('/company-stock-listings', [CompanyStockListingController::class, 'store']);
-    Route::post('/contact', [PlatformController::class, 'contact']);
+    Route::middleware('feature:store')->group(function () {
+        Route::get('/categories', [CategoryController::class, 'index']);
+        Route::get('/categories/{slug}', [CategoryController::class, 'show']);
+        Route::get('/brands', [BrandController::class, 'index']);
+        Route::get('/brands/{slug}', [BrandController::class, 'show']);
+        Route::get('/products', [ProductController::class, 'index']);
+        Route::get('/products/{slug}', [ProductController::class, 'show']);
+    });
+
+    Route::middleware('feature:auctions')->group(function () {
+        Route::get('/auctions', [AuctionController::class, 'index']);
+        Route::get('/auctions/{slug}', [AuctionController::class, 'show']);
+    });
+
+    Route::post('/inquiries', [InquiryController::class, 'store'])->middleware(['feature:inquiry', 'throttle:contact']);
+    Route::post('/company-stock-listings', [CompanyStockListingController::class, 'store'])->middleware('throttle:contact');
+    Route::post('/contact', [PlatformController::class, 'contact'])->middleware('throttle:contact');
     Route::get('/features', [PlatformController::class, 'features']);
     Route::get('/payments/stripe/config', [StripeController::class, 'config']);
     Route::post('/payments/stripe/webhook', [StripeController::class, 'webhook']);
     Route::get('/shipping-methods', [PlatformController::class, 'shippingMethods']);
     Route::get('/cms/pages/{slug}', [PlatformController::class, 'cmsPage']);
     Route::get('/cms/banners', [PlatformController::class, 'cmsBanners']);
-    Route::get('/sitemap.xml', [PlatformController::class, 'sitemap']);
-    Route::get('/robots.txt', [PlatformController::class, 'robots']);
-    Route::get('/tax', [PlatformController::class, 'publicTax']);
+    Route::get('/sitemap.xml', [SystemController::class, 'sitemap']);
+    Route::get('/robots.txt', [SystemController::class, 'robots']);
+    Route::get('/tax', [SystemController::class, 'publicTax']);
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::post('/auth/change-password', [PasswordController::class, 'change']);
-        Route::post('/auth/resend-verification', [AuthController::class, 'resendVerification']);
+        Route::post('/auth/resend-verification', [AuthController::class, 'resendVerification'])->middleware('throttle:auth');
         Route::post('/auth/two-factor', [PlatformController::class, 'twoFactorToggle']);
 
         Route::get('/addresses', [AddressController::class, 'index']);
@@ -64,35 +72,39 @@ Route::prefix('v1')->group(function () {
         Route::put('/addresses/{address}', [AddressController::class, 'update']);
         Route::delete('/addresses/{address}', [AddressController::class, 'destroy']);
 
-        Route::post('/auctions/{auction}/apply', [AuctionController::class, 'apply']);
-        Route::post('/auctions/{auction}/bids', [AuctionController::class, 'placeBid']);
-        Route::put('/auctions/{auction}/proxy', [AuctionController::class, 'setProxy']);
-        Route::delete('/auctions/{auction}/proxy', [AuctionController::class, 'cancelProxy']);
-        Route::post('/auctions/{auction}/buy-now', [AuctionController::class, 'buyNow']);
+        Route::middleware(['feature:auctions', 'verified.email', 'throttle:bidding'])->group(function () {
+            Route::post('/auctions/{auction}/apply', [AuctionController::class, 'apply']);
+            Route::post('/auctions/{auction}/bids', [AuctionController::class, 'placeBid']);
+            Route::put('/auctions/{auction}/proxy', [AuctionController::class, 'setProxy']);
+            Route::delete('/auctions/{auction}/proxy', [AuctionController::class, 'cancelProxy']);
+            Route::post('/auctions/{auction}/buy-now', [AuctionController::class, 'buyNow'])->middleware('feature:buy_now');
+            Route::post('/auctions/{auction}/checkout', [OrderController::class, 'checkoutAuction']);
+        });
         Route::get('/me/auction-applications', [AuctionController::class, 'myApplications']);
         Route::get('/me/bids', [AuctionController::class, 'myBids']);
         Route::get('/me/won-auctions', [OrderController::class, 'wonAuctions']);
         Route::get('/me/notifications', [PlatformController::class, 'myNotifications']);
         Route::post('/me/notifications/{notification}/read', [PlatformController::class, 'markNotificationRead']);
         Route::post('/me/notifications/read-all', [PlatformController::class, 'markAllNotificationsRead']);
-        Route::get('/me/watchlist', [PlatformController::class, 'watchlist']);
-        Route::post('/me/watchlist/toggle', [PlatformController::class, 'toggleWatch']);
+        Route::get('/me/watchlist', [WatchlistController::class, 'index']);
+        Route::post('/me/watchlist/toggle', [WatchlistController::class, 'toggle']);
 
-        Route::get('/cart', [CartController::class, 'show']);
-        Route::put('/cart/items', [CartController::class, 'upsert']);
-        Route::post('/cart/sync', [CartController::class, 'sync']);
-        Route::post('/cart/coupon', [CartController::class, 'coupon']);
-        Route::delete('/cart', [CartController::class, 'clear']);
+        Route::middleware('feature:store')->group(function () {
+            Route::get('/cart', [CartController::class, 'show']);
+            Route::put('/cart/items', [CartController::class, 'upsert']);
+            Route::post('/cart/sync', [CartController::class, 'sync']);
+            Route::post('/cart/coupon', [CartController::class, 'coupon'])->middleware('feature:coupons');
+            Route::delete('/cart', [CartController::class, 'clear']);
+            Route::post('/checkout', [OrderController::class, 'checkout'])->middleware('verified.email');
+        });
 
         Route::get('/orders', [OrderController::class, 'index']);
         Route::get('/orders/{order}', [OrderController::class, 'show']);
         Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
-        Route::post('/orders/{order}/returns', [PlatformController::class, 'requestReturn']);
+        Route::post('/orders/{order}/returns', [PlatformController::class, 'requestReturn'])->middleware('verified.email');
         Route::get('/me/returns', [PlatformController::class, 'myReturns']);
-        Route::post('/checkout', [OrderController::class, 'checkout']);
-        Route::post('/auctions/{auction}/checkout', [OrderController::class, 'checkoutAuction']);
-        Route::post('/orders/{order}/stripe/checkout', [StripeController::class, 'start']);
-        Route::post('/payments/{payment}/stripe/demo-complete', [StripeController::class, 'demoComplete']);
+        Route::post('/orders/{order}/stripe/checkout', [StripeController::class, 'start'])->middleware(['verified.email', 'feature:payment_stripe']);
+        Route::post('/payments/{payment}/stripe/demo-complete', [StripeController::class, 'demoComplete'])->middleware('verified.email');
         Route::post('/payments/stripe/sync', [StripeController::class, 'syncSession']);
 
         Route::get('/invoices', [InvoiceController::class, 'index']);
@@ -253,9 +265,9 @@ Route::prefix('v1')->group(function () {
             });
 
             Route::middleware('permission:admin.system')->group(function () {
-                Route::get('/system/status', [PlatformController::class, 'systemStatus']);
-                Route::get('/system/backups', [PlatformController::class, 'listBackups']);
-                Route::post('/system/backups', [PlatformController::class, 'runBackup']);
+                Route::get('/system/status', [SystemController::class, 'status']);
+                Route::get('/system/backups', [SystemController::class, 'listBackups']);
+                Route::post('/system/backups', [SystemController::class, 'runBackup']);
             });
         });
     });

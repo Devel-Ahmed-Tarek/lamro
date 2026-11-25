@@ -923,6 +923,9 @@ const ROWS: Row[] = [
   ["Request failed.", "فشل الطلب.", "Anfrage fehlgeschlagen.", "Échec de la demande.", "Richiesta non riuscita.", "Error en la solicitud.", "İstek başarısız.", "Aanvraag mislukt.", "Żądanie nie powiodło się.", "O pedido falhou."],
   ["Run a backup before major releases or migrations. Keep at least one recent copy off the app server.", "أنشئ نسخة احتياطية قبل الإصدارات أو الترحيلات الكبيرة. احتفظ بنسخة حديثة خارج خادم التطبيق.", "Vor großen Releases oder Migrationen ein Backup erstellen. Mindestens eine aktuelle Kopie außerhalb des App-Servers behalten.", "Faites une sauvegarde avant les grands déploiements ou migrations. Gardez au moins une copie récente hors du serveur.", "Esegui un backup prima di rilasci o migrazioni importanti. Tieni almeno una copia recente fuori dal server.", "Haz una copia de seguridad antes de lanzamientos o migraciones grandes. Guarda al menos una copia reciente fuera del servidor.", "Büyük sürümler veya migrasyonlardan önce yedek alın. En az bir güncel kopyayı uygulama sunucusu dışında tutun.", "Maak een back-up vóór grote releases of migraties. Bewaar minstens één recente kopie buiten de app-server.", "Uruchom kopię zapasową przed dużymi wydaniami lub migracjami. Trzymaj co najmniej jedną świeżą kopię poza serwerem aplikacji.", "Faça um backup antes de lançamentos ou migrações grandes. Guarde pelo menos uma cópia recente fora do servidor."],
   ["Industrial electronics storefront and auctions", "متجر ومزادات للإلكترونيات الصناعية", "Storefront und Auktionen für Industrieelektronik", "Boutique et enchères d’électronique industrielle", "Storefront e aste di elettronica industriale", "Tienda y subastas de electrónica industrial", "Endüstriyel elektronik vitrin ve müzayedeleri", "Storefront en veilingen voor industriële elektronica", "Witryna i aukcje elektroniki przemysłowej", "Loja e leilões de eletrónica industrial"],
+  ["Maintenance mode is on. Storefront actions may be unavailable.", "وضع الصيانة مفعّل. قد تكون إجراءات المتجر غير متاحة.", "Wartungsmodus aktiv. Storefront-Aktionen ggf. nicht verfügbar.", "Mode maintenance actif. Actions boutique éventuellement indisponibles.", "Modalità manutenzione attiva. Azioni storefront forse non disponibili.", "Modo mantenimiento activo. Acciones de tienda pueden no estar disponibles.", "Bakım modu açık. Vitrin işlemleri kullanılamayabilir.", "Onderhoudsmodus aan. Storefront-acties mogelijk niet beschikbaar.", "Tryb konserwacji włączony. Akcje sklepu mogą być niedostępne.", "Modo de manutenção ativo. Ações da loja podem estar indisponíveis."],
+  ["Could not update cart. Please try again.", "تعذّر تحديث السلة. حاول مرة أخرى.", "Warenkorb konnte nicht aktualisiert werden. Bitte erneut versuchen.", "Impossible de mettre à jour le panier. Réessayez.", "Impossibile aggiornare il carrello. Riprova.", "No se pudo actualizar el carrito. Inténtalo de nuevo.", "Sepet güncellenemedi. Lütfen tekrar deneyin.", "Winkelwagen bijwerken mislukt. Probeer opnieuw.", "Nie udało się zaktualizować koszyka. Spróbuj ponownie.", "Não foi possível atualizar o carrinho. Tente novamente."],
+  ["Could not clear cart. Please try again.", "تعذّر تفريغ السلة. حاول مرة أخرى.", "Warenkorb konnte nicht geleert werden. Bitte erneut versuchen.", "Impossible de vider le panier. Réessayez.", "Impossibile svuotare il carrello. Riprova.", "No se pudo vaciar el carrito. Inténtalo de nuevo.", "Sepet temizlenemedi. Lütfen tekrar deneyin.", "Winkelwagen legen mislukt. Probeer opnieuw.", "Nie udało się wyczyścić koszyka. Spróbuj ponownie.", "Não foi possível limpar o carrinho. Tente novamente."],
 ];
 
 /** English source string -> full Copy for all storefront locales */
@@ -937,7 +940,13 @@ export function enrichCopy(copy: Copy | Record<string, string | undefined>): Cop
   const en = typeof copy.en === "string" ? copy.en.trim() : "";
   if (!en) return copy as Copy;
   const hit = ADMIN_DICT[en] ?? PUBLIC_DICT[en];
-  if (!hit) return copy as Copy;
+  if (!hit) {
+    if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
+      // Exact English keys power locale packs — typos silently fall back.
+      console.warn(`[i18n] missing PUBLIC_DICT/ADMIN_DICT key: ${en}`);
+    }
+    return copy as Copy;
+  }
   // Dictionary fills missing locales; explicit call-site values still win.
   return { ...hit, ...copy } as Copy;
 }

@@ -26,7 +26,7 @@ const company = [
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { locale, setLocale, role, setRole, cart, features, t, profile, logoutAuth } = useStore();
+  const { locale, setLocale, role, setRole, cart, features, t, profile, logoutAuth, maintenance, cartNotice, clearCartNotice } = useStore();
   const { categories } = usePublicCategories();
   const { brands } = usePublicBrands();
   const [open, setOpen] = useState(false);
@@ -42,7 +42,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   const count = mounted ? cart.reduce((sum, line) => sum + line.qty, 0) : 0;
   const activeRole = mounted ? role : null;
-  const accountHref = activeRole === "admin" ? "/admin" : activeRole === "seller" ? "/seller" : "/account";
+  const accountHref = activeRole === "admin" ? "/admin" : "/account";
   const links = direct.filter((item) => !mounted || features[item.feature]);
 
   function search(event: React.FormEvent) {
@@ -53,6 +53,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      {maintenance ? (
+        <div className="bg-ink px-3 py-2 text-center text-sm text-white">
+          {t({ en: "Maintenance mode is on. Storefront actions may be unavailable." })}
+        </div>
+      ) : null}
+      {cartNotice ? (
+        <div className="bg-danger/10 px-3 py-2 text-center text-sm text-danger">
+          {t({ en: cartNotice })}{" "}
+          <button type="button" className="underline" onClick={clearCartNotice}>
+            {t({ en: "Close" })}
+          </button>
+        </div>
+      ) : null}
       <header className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-16 w-full items-center gap-3 px-3 sm:px-4 lg:px-6">
           <button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-line lg:hidden" onClick={() => setOpen(true)} aria-label={t({ de: "Menü", en: "Menu" })}>

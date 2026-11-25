@@ -19,9 +19,13 @@ class FeatureSetting extends Model
 
     public static function enabled(string $key, bool $default = true): bool
     {
-        $map = Cache::remember('feature_settings_map', 30, function () {
-            return static::query()->pluck('enabled', 'key')->all();
-        });
+        try {
+            $map = Cache::remember('feature_settings_map', 30, function () {
+                return static::query()->pluck('enabled', 'key')->all();
+            });
+        } catch (\Throwable) {
+            return $default;
+        }
 
         return array_key_exists($key, $map) ? (bool) $map[$key] : $default;
     }

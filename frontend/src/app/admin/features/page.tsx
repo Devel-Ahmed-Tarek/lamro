@@ -32,7 +32,11 @@ export default function FeaturesPage() {
             <button
               type="button"
               className={item.enabled ? "text-moss" : "text-muted"}
-              onClick={() => void adminPut(`/api/v1/admin/features/${item.key}`, { enabled: !item.enabled }).then(load)}
+              onClick={() => void adminPut(`/api/v1/admin/features/${item.key}`, { enabled: !item.enabled }).then(async () => {
+                await load();
+                // Force storefront feature hydration on next page load.
+                window.dispatchEvent(new Event('jala-features-changed'));
+              })}
             >
               {item.enabled ? t({ de: "AN", en: "ON" }) : t({ de: "AUS", en: "OFF" })}
             </button>

@@ -190,6 +190,12 @@ class PlaceBidService
             ]);
         }
 
+        if (! $user->email_verified_at) {
+            throw ValidationException::withMessages([
+                'email' => ['Please verify your email before bidding.'],
+            ]);
+        }
+
         $approved = AuctionApplication::query()
             ->where('auction_id', $auction->id)
             ->where('user_id', $user->id)
@@ -242,40 +248,56 @@ class PlaceBidService
 
     private function resolveProxies(Auction $auction, int $excludeUserId): void
     {
-        $auction->refresh();
-        $leading = $auction->bids()->latest('id')->first();
-        if (! $leading) {
-            return;
-        }
-
-        $proxies = AuctionProxy::query()
-            ->where('auction_id', $auction->id)
-            ->where('is_active', true)
-            ->where('user_id', '!=', $leading->user_id)
-            ->where('max_amount_cents', '>=', $leading->amount_cents + $auction->increment_cents)
-            ->orderByDesc('max_amount_cents')
-            ->orderBy('id')
-            ->get();
-
-        foreach ($proxies as $proxy) {
+        // Keep resolving until the leading bidder is the highest remaining proxy (or no underbid possible).
+        for ($guard = 0; $guard < 40; $guard++) {
             $auction->refresh();
-            $currentLeading = $auction->bids()->latest('id')->first();
-            if (! $currentLeading || $currentLeading->user_id === $proxy->user_id) {
-                continue;
+            $leading = $auction->bids()->latest('id')->first();
+            if (! $leading) {
+                return;
             }
 
-            $next = $currentLeading->amount_cents + $auction->increment_cents;
-            if ($next > $proxy->max_amount_cents) {
-                continue;
+            $challenger = AuctionProxy::query()
+                ->where('auction_id', $auction->id)
+                ->where('is_active', true)
+                ->where('user_id', '!=', $leading->user_id)
+                ->when($excludeUserId > 0, fn ($q) => $q->where('user_id', '!=', $excludeUserId))
+                ->where('max_amount_cents', '>=', $leading->amount_cents + $auction->increment_cents)
+                ->orderByDesc('max_amount_cents')
+                ->orderBy('id')
+                ->first();
+
+            if (! $challenger) {
+                return;
             }
 
-            $user = User::query()->find($proxy->user_id);
+            $leaderProxy = AuctionProxy::query()
+                ->where('auction_id', $auction->id)
+                ->where('is_active', true)
+                ->where('user_id', $leading->user_id)
+                ->first();
+
+            $next = $leading->amount_cents + $auction->increment_cents;
+            if ($leaderProxy && $challenger->max_amount_cents > $leaderProxy->max_amount_cents) {
+                // Jump to one increment over the second-highest max when two proxies compete.
+                $next = min(
+                    $challenger->max_amount_cents,
+                    $leaderProxy->max_amount_cents + $auction->increment_cents,
+                );
+                $next = max($next, $leading->amount_cents + $auction->increment_cents);
+            }
+
+            if ($next > $challenger->max_amount_cents) {
+                return;
+            }
+
+            $user = User::query()->find($challenger->user_id);
             if (! $user) {
-                continue;
+                return;
             }
 
             $bid = $this->insertBid($auction, $user, $next, true);
             $this->touchAuctionAfterBid($auction, $bid);
+            $excludeUserId = 0;
         }
     }
 

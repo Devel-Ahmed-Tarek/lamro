@@ -61,6 +61,7 @@ class PasswordController extends Controller
 
         $user = User::query()->where('email', $data['email'])->firstOrFail();
         $user->update(['password' => $data['password']]);
+        $user->tokens()->delete();
         DB::table('password_reset_tokens')->where('email', $data['email'])->delete();
 
         return response()->json(['data' => ['ok' => true]]);
@@ -78,7 +79,8 @@ class PasswordController extends Controller
             throw ValidationException::withMessages(['current_password' => ['Current password is incorrect.']]);
         }
         $user->update(['password' => $data['password']]);
+        $user->tokens()->delete();
 
-        return response()->json(['data' => ['ok' => true]]);
+        return response()->json(['data' => ['ok' => true, 'reauth_required' => true]]);
     }
 }

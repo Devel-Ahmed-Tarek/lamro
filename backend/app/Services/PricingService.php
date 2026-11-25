@@ -17,11 +17,12 @@ class PricingService
     public function discounts(Collection $lines, ?string $couponCode, ?User $user = null): array
     {
         $subtotal = (int) $lines->sum(fn ($line) => $line->price_cents * $line->quantity);
-        $maxQty = (int) $lines->max('quantity');
+        // Cart-wide quantity for B2B tiers (sum of units), not the largest single line.
+        $totalQty = (int) $lines->sum('quantity');
 
         $tier = QuantityDiscountTier::query()
             ->where('is_active', true)
-            ->where('min_qty', '<=', max(1, $maxQty))
+            ->where('min_qty', '<=', max(1, $totalQty))
             ->orderByDesc('min_qty')
             ->first();
 

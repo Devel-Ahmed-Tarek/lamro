@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Auction;
 use App\Models\Cart;
+use App\Models\Coupon;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Payment;
@@ -157,7 +158,13 @@ class CheckoutService
             ]);
 
             if ($discount['coupon']) {
-                $discount['coupon']->increment('used_count');
+                $coupon = Coupon::query()->whereKey($discount['coupon']->id)->lockForUpdate()->first();
+                if ($coupon) {
+                    if ($coupon->max_uses !== null && $coupon->used_count >= $coupon->max_uses) {
+                        throw ValidationException::withMessages(['coupon' => ['Coupon usage limit reached.']]);
+                    }
+                    $coupon->increment('used_count');
+                }
             }
 
             $cart->items()->delete();
