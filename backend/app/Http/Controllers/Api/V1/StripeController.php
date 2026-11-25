@@ -20,9 +20,11 @@ class StripeController extends Controller
     {
         return response()->json([
             'data' => [
-                'enabled' => $this->stripe->enabled() && FeatureSetting::enabled('payment_stripe', false),
+                'enabled' => $this->stripe->enabled(),
                 'demo' => $this->stripe->demoMode(),
-                'publishable_key' => config('services.stripe.key'),
+                'publishable_key' => $this->stripe->publishableKey(),
+                'bank_transfer_enabled' => FeatureSetting::enabled('payment_bank_transfer', true),
+                'payment_method_types' => $this->stripe->settings()->checkoutPaymentMethodTypes(),
             ],
         ]);
     }

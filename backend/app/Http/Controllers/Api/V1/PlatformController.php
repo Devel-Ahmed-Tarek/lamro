@@ -71,6 +71,11 @@ class PlatformController extends Controller
         $feature = FeatureSetting::query()->firstOrCreate(['key' => $key], ['enabled' => true]);
         $feature->update(['enabled' => $data['enabled']]);
         FeatureSetting::flushCache();
+        if ($key === 'payment_stripe') {
+            $stripe = \App\Models\StripeSetting::current();
+            $stripe->update(['enabled' => (bool) $data['enabled']]);
+            \App\Models\StripeSetting::flushCache();
+        }
         $this->audit->log($request->user(), 'feature.updated', $feature, $data);
 
         return response()->json(['data' => $feature->fresh()]);

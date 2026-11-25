@@ -58,6 +58,7 @@ export function useAdminNavGroups(): AdminNavGroup[] {
         { href: "/admin/orders", label: t({ de: "Bestellungen", en: "Orders" }), permission: "admin.orders" },
         { href: "/admin/returns", label: t({ de: "Retouren", en: "Returns" }), permission: "admin.orders" },
         { href: "/admin/payments", label: t({ de: "Zahlungen", en: "Payments" }), permission: "admin.payments" },
+        { href: "/admin/stripe", label: t({ de: "Stripe", en: "Stripe" }), permission: "admin.payments" },
         { href: "/admin/invoices", label: t({ de: "Rechnungen", en: "Invoices" }), permission: "admin.invoices" },
         { href: "/admin/messages", label: t({ de: "Nachrichten", en: "Messages" }), permission: "admin.messages" },
       ],

@@ -171,11 +171,11 @@ class RefundService
 
     private function refundStripe(Payment $payment, int $amountCents, ?string $reason): ?string
     {
-        if ($this->stripe->demoMode() || ! config('services.stripe.secret')) {
+        if ($this->stripe->demoMode() || ! $this->stripe->secretKey()) {
             return 'demo_refund_'.$payment->id.'_'.Str::lower(Str::random(6));
         }
 
-        Stripe::setApiKey((string) config('services.stripe.secret'));
+        Stripe::setApiKey((string) $this->stripe->secretKey());
 
         $paymentIntent = null;
         if ($payment->provider_id && str_starts_with((string) $payment->provider_id, 'cs_')) {

@@ -191,7 +191,13 @@ export async function checkoutAuctionWin(auctionId: number, shipping: ShippingPa
 }
 
 export async function fetchStripeConfig() {
-  return api<Envelope<{ enabled: boolean; demo: boolean; publishable_key: string | null }>>("/api/v1/payments/stripe/config", {
+  return api<Envelope<{
+    enabled: boolean;
+    demo: boolean;
+    publishable_key: string | null;
+    bank_transfer_enabled?: boolean;
+    payment_method_types?: string[];
+  }>>("/api/v1/payments/stripe/config", {
     auth: false,
   });
 }

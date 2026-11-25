@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\AiProductController;
 use App\Http\Controllers\Api\V1\CompanyStockListingController;
 use App\Http\Controllers\Api\V1\StripeController;
+use App\Http\Controllers\Api\V1\StripeSettingsController;
 use App\Http\Controllers\Api\V1\CmsController;
 use App\Http\Controllers\Api\V1\ReportsController;
 use App\Http\Controllers\Api\V1\ReturnsController;
@@ -206,6 +207,9 @@ Route::prefix('v1')->group(function () {
                 Route::get('/payments', [PaymentController::class, 'adminIndex']);
                 Route::post('/payments/{payment}/mark-received', [PaymentController::class, 'markReceived']);
                 Route::post('/payments/{payment}/mark-failed', [PaymentController::class, 'markFailed']);
+                Route::get('/stripe-settings', [StripeSettingsController::class, 'show']);
+                Route::put('/stripe-settings', [StripeSettingsController::class, 'update']);
+                Route::post('/stripe-settings/test', [StripeSettingsController::class, 'test']);
             });
 
             Route::middleware('permission:admin.invoices')->group(function () {

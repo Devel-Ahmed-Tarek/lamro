@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\FeatureSetting;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\StripeSetting;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -21,18 +22,35 @@ class StripePaymentService
         private AuditLogger $audit,
     ) {}
 
+    public function settings(): StripeSetting
+    {
+        return StripeSetting::current();
+    }
+
     public function enabled(): bool
     {
-        return FeatureSetting::enabled('payment_stripe', false);
+        // StripeSetting.enabled is source of truth; FeatureSetting stays mirrored for the Features page.
+        return (bool) $this->settings()->enabled;
     }
 
     public function demoMode(): bool
     {
-        if (! config('services.stripe.secret')) {
-            return true;
-        }
+        return $this->settings()->isDemoMode();
+    }
 
-        return (bool) config('services.stripe.demo');
+    public function secretKey(): ?string
+    {
+        return $this->settings()->secretKey();
+    }
+
+    public function publishableKey(): ?string
+    {
+        return $this->settings()->publishableKey();
+    }
+
+    public function webhookSecret(): ?string
+    {
+        return $this->settings()->webhookSecret();
     }
 
     public function createCheckoutPayment(Order $order, User $user): Payment
@@ -59,11 +77,11 @@ class StripePaymentService
             ]);
         }
 
+        $settings = $this->settings();
+
         if ($this->demoMode()) {
             $token = Str::random(40);
-            $frontend = rtrim((string) config('services.stripe.frontend_url', config('app.frontend_url', 'http://127.0.0.1:3000')), '/');
-            // FRONTEND_URL may be comma-separated
-            $frontend = explode(',', $frontend)[0];
+            $frontend = $this->frontendBase();
             $url = $frontend.'/checkout/stripe?payment='.$payment->id.'&demo=1&token='.$token;
             $payment->update([
                 'provider_id' => 'demo_'.$payment->id,
@@ -75,15 +93,22 @@ class StripePaymentService
             return $payment->fresh();
         }
 
-        Stripe::setApiKey((string) config('services.stripe.secret'));
-        $frontend = rtrim(explode(',', (string) config('services.stripe.frontend_url', 'http://127.0.0.1:3000'))[0], '/');
+        $secret = $settings->secretKey();
+        if (! $secret) {
+            throw ValidationException::withMessages(['payment' => ['Stripe secret key is not configured.']]);
+        }
 
-        $session = Session::create([
+        Stripe::setApiKey($secret);
+        $frontend = $this->frontendBase();
+
+        $payload = [
             'mode' => 'payment',
             'customer_email' => $user->email,
             'client_reference_id' => (string) $order->id,
             'success_url' => $frontend.'/checkout/stripe?session_id={CHECKOUT_SESSION_ID}&success=1',
             'cancel_url' => $frontend.'/checkout/stripe?cancelled=1&order='.$order->id,
+            'payment_method_types' => $settings->checkoutPaymentMethodTypes(),
+            'billing_address_collection' => $settings->billing_address_collection ?: 'auto',
             'line_items' => [[
                 'quantity' => 1,
                 'price_data' => [
@@ -99,7 +124,27 @@ class StripePaymentService
                 'order_number' => $order->number,
                 'payment_id' => (string) $payment->id,
             ],
-        ]);
+        ];
+
+        if ($settings->phone_number_collection) {
+            $payload['phone_number_collection'] = ['enabled' => true];
+        }
+        if ($settings->allow_promotion_codes) {
+            $payload['allow_promotion_codes'] = true;
+        }
+        if ($settings->tax_id_collection) {
+            $payload['tax_id_collection'] = ['enabled' => true];
+        }
+        if ($settings->statement_descriptor) {
+            $payload['payment_intent_data'] = [
+                'statement_descriptor' => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $settings->statement_descriptor) ?? 'JALA', 0, 22),
+                'capture_method' => $settings->capture_method === 'manual' ? 'manual' : 'automatic',
+            ];
+        } elseif ($settings->capture_method === 'manual') {
+            $payload['payment_intent_data'] = ['capture_method' => 'manual'];
+        }
+
+        $session = Session::create($payload);
 
         $payment->update([
             'provider_id' => $session->id,
@@ -130,8 +175,8 @@ class StripePaymentService
 
     public function handleWebhook(string $payload, ?string $signature): array
     {
-        $secret = (string) config('services.stripe.webhook_secret');
-        if ($secret) {
+        $secret = (string) ($this->webhookSecret() ?? '');
+        if ($secret !== '') {
             $event = Webhook::constructEvent($payload, (string) $signature, $secret);
         } elseif (app()->isProduction()) {
             throw ValidationException::withMessages([
@@ -196,11 +241,11 @@ class StripePaymentService
 
     public function syncSession(string $sessionId): ?Order
     {
-        if ($this->demoMode() || ! config('services.stripe.secret')) {
+        if ($this->demoMode() || ! $this->secretKey()) {
             return null;
         }
 
-        Stripe::setApiKey((string) config('services.stripe.secret'));
+        Stripe::setApiKey((string) $this->secretKey());
         $session = Session::retrieve($sessionId);
         if ($session->payment_status !== 'paid') {
             return null;
@@ -217,5 +262,12 @@ class StripePaymentService
         }
 
         return $this->checkout->markPaymentReceived($payment, $admin, 'Stripe session sync');
+    }
+
+    private function frontendBase(): string
+    {
+        $frontend = rtrim((string) config('services.stripe.frontend_url', config('app.frontend_url', 'http://127.0.0.1:3000')), '/');
+
+        return explode(',', $frontend)[0];
     }
 }

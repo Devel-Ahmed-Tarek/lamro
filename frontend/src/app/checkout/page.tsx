@@ -27,6 +27,7 @@ export default function CheckoutPage() {
   const [payMethod, setPayMethod] = useState<"bank_transfer" | "stripe">("stripe");
   const [stripeEnabled, setStripeEnabled] = useState(false);
   const [stripeDemo, setStripeDemo] = useState(true);
+  const [bankEnabled, setBankEnabled] = useState(true);
   const [taxRateBps, setTaxRateBps] = useState(0);
 
   useEffect(() => {
@@ -42,7 +43,9 @@ export default function CheckoutPage() {
     void fetchStripeConfig().then((response) => {
       setStripeEnabled(response.data.enabled);
       setStripeDemo(response.data.demo);
-      if (!response.data.enabled) setPayMethod("bank_transfer");
+      setBankEnabled(response.data.bank_transfer_enabled !== false);
+      if (response.data.enabled) setPayMethod("stripe");
+      else if (response.data.bank_transfer_enabled !== false) setPayMethod("bank_transfer");
     }).catch(() => setPayMethod("bank_transfer"));
     void fetchPublicTax()
       .then((response) => setTaxRateBps(response.data.rate_bps))
@@ -163,10 +166,15 @@ export default function CheckoutPage() {
                     Stripe {stripeDemo ? `(${t({ de: "Demo", en: "Demo" })})` : "(Test/Live)"}
                   </label>
                 ) : null}
-                <label className="flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-3 text-sm">
-                  <input type="radio" name="pay" checked={payMethod === "bank_transfer"} onChange={() => setPayMethod("bank_transfer")} />
-                  {t({ de: "Banküberweisung", en: "Bank transfer" })}
-                </label>
+                {bankEnabled ? (
+                  <label className="flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-3 text-sm">
+                    <input type="radio" name="pay" checked={payMethod === "bank_transfer"} onChange={() => setPayMethod("bank_transfer")} />
+                    {t({ de: "Banküberweisung", en: "Bank transfer" })}
+                  </label>
+                ) : null}
+                {!stripeEnabled && !bankEnabled ? (
+                  <p className="text-sm text-danger">{t({ en: "No payment methods are enabled. Contact support." })}</p>
+                ) : null}
               </div>
               {stripeDemo && stripeEnabled ? (
                 <p className="mt-2 text-xs text-muted">{t({ en: "Demo Stripe is for staging only and cannot complete live charges." })}</p>
