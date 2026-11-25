@@ -47,6 +47,51 @@ type TestResult = {
   business_name?: string | null;
 };
 
+const METHOD_COPY: Record<string, { label: string; hint: string }> = {
+  card: { label: "Card", hint: "Visa, Mastercard, Amex, …" },
+  sepa_debit: { label: "SEPA Direct Debit", hint: "EU bank debit" },
+  ideal: { label: "iDEAL", hint: "Netherlands" },
+  bancontact: { label: "Bancontact", hint: "Belgium" },
+  eps: { label: "EPS", hint: "Austria" },
+  giropay: { label: "Giropay", hint: "Germany (legacy)" },
+  p24: { label: "Przelewy24", hint: "Poland" },
+  klarna: { label: "Klarna", hint: "Pay later / installments" },
+  paypal: { label: "PayPal", hint: "Requires PayPal in Stripe" },
+  link: { label: "Link", hint: "Stripe Link one-click" },
+  apple_pay: { label: "Apple Pay", hint: "Via card + Stripe Dashboard" },
+  google_pay: { label: "Google Pay", hint: "Via card + Stripe Dashboard" },
+};
+
+const SETUP_STEPS: Array<{ title: string; detail: string; urlKey?: "keys" | "webhooks" | "methods" }> = [
+  {
+    title: "Open Stripe API keys",
+    detail: "Stripe Dashboard → Developers → API keys. Copy Publishable key (pk_…) and Secret key (sk_…).",
+    urlKey: "keys",
+  },
+  {
+    title: "Paste keys here",
+    detail: "Put pk_… in Publishable key and sk_… in Secret key on this page, then Save.",
+  },
+  {
+    title: "Create a webhook endpoint",
+    detail: "Stripe Dashboard → Developers → Webhooks → Add endpoint. Paste the Webhook URL from this page. Listen to checkout.session.completed.",
+    urlKey: "webhooks",
+  },
+  {
+    title: "Copy the webhook signing secret",
+    detail: "Open the endpoint → Reveal Signing secret (whsec_…) → paste it into Webhook secret here → Save.",
+  },
+  {
+    title: "Enable payment methods in Stripe",
+    detail: "Stripe Dashboard → Settings → Payment methods. Turn on the same methods you select below (card, SEPA, iDEAL, …).",
+    urlKey: "methods",
+  },
+  {
+    title: "Go live",
+    detail: "Use live keys (pk_live_ / sk_live_), turn Demo mode OFF, enable Stripe on this page, then Test connection.",
+  },
+];
+
 const empty: StripeAdminSettings = {
   enabled: false,
   demo_mode: true,
@@ -116,6 +161,26 @@ export default function AdminStripePage() {
     });
   }
 
+  function setupUrl(key?: "keys" | "webhooks" | "methods") {
+    if (key === "keys") return settings.setup.dashboard_keys_url;
+    if (key === "webhooks") return settings.setup.dashboard_webhooks_url;
+    if (key === "methods") return settings.setup.dashboard_payment_methods_url;
+    return undefined;
+  }
+
+  function translateApiMessage(message: string) {
+    const known = [
+      "Stripe connection OK.",
+      "Secret key is missing. Paste sk_test_… or sk_live_… first.",
+    ];
+    if (known.includes(message)) return t({ en: message });
+    return message;
+  }
+
+  function savedPlaceholder(hint: string | null) {
+    return `${t({ en: "Saved:" })} ${hint ?? "…"}. ${t({ en: "Leave blank to keep." })}`;
+  }
+
   async function onSave(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -178,9 +243,14 @@ export default function AdminStripePage() {
     }
   }
 
+  const methodIds =
+    settings.available_payment_method_types.length > 0
+      ? settings.available_payment_method_types.map((m) => m.id)
+      : Object.keys(METHOD_COPY);
+
   return (
     <AdminShell>
-      <h1 className="text-3xl font-semibold tracking-tight">{t({ de: "Stripe", en: "Stripe" })}</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">{t({ en: "Stripe" })}</h1>
       <p className="mt-2 max-w-2xl text-sm text-muted">
         {t({
           en: "Full control for super admins: keys, webhook, checkout methods, and site payment channels.",
@@ -190,20 +260,23 @@ export default function AdminStripePage() {
       <section className="mt-8 rounded-3xl border border-line bg-white p-5">
         <h2 className="text-lg font-semibold">{t({ en: "Setup checklist" })}</h2>
         <ol className="mt-4 space-y-4">
-          {settings.setup.steps.map((step, index) => (
-            <li key={step.title} className="flex gap-3 text-sm">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-paper font-mono text-xs">{index + 1}</span>
-              <div>
-                <p className="font-medium">{step.title}</p>
-                <p className="mt-1 text-muted">{step.detail}</p>
-                {step.url ? (
-                  <a href={step.url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-copper underline-offset-4 hover:underline">
-                    {t({ en: "Open in Stripe" })}
-                  </a>
-                ) : null}
-              </div>
-            </li>
-          ))}
+          {SETUP_STEPS.map((step, index) => {
+            const url = setupUrl(step.urlKey);
+            return (
+              <li key={step.title} className="flex gap-3 text-sm">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-paper font-mono text-xs">{index + 1}</span>
+                <div>
+                  <p className="font-medium">{t({ en: step.title })}</p>
+                  <p className="mt-1 text-muted">{t({ en: step.detail })}</p>
+                  {url ? (
+                    <a href={url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-copper underline-offset-4 hover:underline">
+                      {t({ en: "Open in Stripe" })}
+                    </a>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
         </ol>
       </section>
 
@@ -212,15 +285,17 @@ export default function AdminStripePage() {
           <h2 className="text-lg font-semibold">{t({ en: "Site payment channels" })}</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <label className="flex items-center justify-between rounded-xl border border-line px-4 py-3 text-sm">
-              <span>Stripe</span>
+              <span>{t({ en: "Stripe" })}</span>
               <input type="checkbox" checked={settings.enabled} onChange={(e) => setSettings({ ...settings, enabled: e.target.checked })} />
             </label>
             <label className="flex items-center justify-between rounded-xl border border-line px-4 py-3 text-sm">
-              <span>{t({ de: "Banküberweisung", en: "Bank transfer" })}</span>
+              <span>{t({ en: "Bank transfer" })}</span>
               <input type="checkbox" checked={settings.bank_transfer_enabled} onChange={(e) => setSettings({ ...settings, bank_transfer_enabled: e.target.checked })} />
             </label>
             <label className="flex items-center justify-between rounded-xl border border-line px-4 py-3 text-sm">
-              <span>PayPal {t({ en: "(feature flag)" })}</span>
+              <span>
+                {t({ en: "PayPal" })} {t({ en: "(feature flag)" })}
+              </span>
               <input type="checkbox" checked={settings.paypal_feature_enabled} onChange={(e) => setSettings({ ...settings, paypal_feature_enabled: e.target.checked })} />
             </label>
           </div>
@@ -251,7 +326,7 @@ export default function AdminStripePage() {
                 type="password"
                 value={secretKey}
                 onChange={(e) => setSecretKey(e.target.value)}
-                placeholder={settings.secret_key_set ? t({ en: `Saved: ${settings.secret_key_hint}. Leave blank to keep.` }) : "sk_…"}
+                placeholder={settings.secret_key_set ? savedPlaceholder(settings.secret_key_hint) : "sk_…"}
                 autoComplete="new-password"
               />
             </Field>
@@ -261,7 +336,7 @@ export default function AdminStripePage() {
                 type="password"
                 value={webhookSecret}
                 onChange={(e) => setWebhookSecret(e.target.value)}
-                placeholder={settings.webhook_secret_set ? t({ en: `Saved: ${settings.webhook_secret_hint}. Leave blank to keep.` }) : "whsec_…"}
+                placeholder={settings.webhook_secret_set ? savedPlaceholder(settings.webhook_secret_hint) : "whsec_…"}
                 autoComplete="new-password"
               />
             </Field>
@@ -272,8 +347,10 @@ export default function AdminStripePage() {
             </button>
             {test ? (
               <p className={`text-sm ${test.ok ? "text-moss" : "text-danger"}`}>
-                {test.message}
-                {test.ok && test.account_id ? ` · ${test.account_id}${test.livemode ? " (live)" : " (test)"}` : ""}
+                {translateApiMessage(test.message)}
+                {test.ok && test.account_id
+                  ? ` · ${test.account_id}${test.livemode ? ` ${t({ en: "(live)" })}` : ` ${t({ en: "(test)" })}`}`
+                  : ""}
               </p>
             ) : null}
           </div>
@@ -295,11 +372,13 @@ export default function AdminStripePage() {
           <a href={settings.setup.dashboard_webhooks_url} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm text-copper underline-offset-4 hover:underline">
             {t({ en: "Open Stripe Webhooks" })}
           </a>
-          <Notice>
-            {t({
-              en: "Recommended event: checkout.session.completed. Production rejects unsigned webhooks.",
-            })}
-          </Notice>
+          <div className="mt-3">
+            <Notice>
+              {t({
+                en: "Recommended event: checkout.session.completed. Production rejects unsigned webhooks.",
+              })}
+            </Notice>
+          </div>
         </section>
 
         <section className="rounded-3xl border border-line bg-white p-5">
@@ -313,20 +392,23 @@ export default function AdminStripePage() {
             </a>
           </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            {settings.available_payment_method_types.map((method) => (
-              <label key={method.id} className="flex items-start gap-3 rounded-xl border border-line px-4 py-3 text-sm">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={settings.payment_method_types.includes(method.id)}
-                  onChange={() => toggleMethod(method.id)}
-                />
-                <span>
-                  <span className="font-medium">{method.label}</span>
-                  <span className="mt-0.5 block text-xs text-muted">{method.hint}</span>
-                </span>
-              </label>
-            ))}
+            {methodIds.map((id) => {
+              const copy = METHOD_COPY[id] ?? { label: id, hint: "" };
+              return (
+                <label key={id} className="flex items-start gap-3 rounded-xl border border-line px-4 py-3 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={settings.payment_method_types.includes(id)}
+                    onChange={() => toggleMethod(id)}
+                  />
+                  <span>
+                    <span className="font-medium">{t({ en: copy.label })}</span>
+                    {copy.hint ? <span className="mt-0.5 block text-xs text-muted">{t({ en: copy.hint })}</span> : null}
+                  </span>
+                </label>
+              );
+            })}
           </div>
           <p className="mt-3 text-xs text-muted">
             {t({ en: "Apple Pay / Google Pay appear automatically when Card is on and wallets are enabled in Stripe." })}
@@ -383,7 +465,7 @@ export default function AdminStripePage() {
         </section>
 
         {error ? <p className="text-sm text-danger">{error}</p> : null}
-        {note ? <p className="text-sm text-moss">{note}</p> : null}
+        {note ? <p className="mt-0 text-sm text-moss">{note}</p> : null}
 
         <button type="submit" disabled={busy} className="w-fit rounded-full bg-copper px-6 py-2.5 text-sm font-medium text-paper disabled:opacity-60">
           {busy ? "…" : t({ en: "Save Stripe settings" })}
