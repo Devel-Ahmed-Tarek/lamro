@@ -177,6 +177,23 @@ export function formatEndsIn(seconds: number | null | undefined, locale: string)
   if (seconds == null) return "—";
   const m = Math.floor(seconds / 60);
   const h = Math.floor(m / 60);
-  if (h > 0) return locale === "de" ? `${h} Std. ${m % 60} Min.` : `${h}h ${m % 60}m`;
-  return locale === "de" ? `${m} Min.` : `${m} min`;
+  const rem = m % 60;
+  if (locale === "de") {
+    if (h > 0) return `${h} Std. ${rem} Min.`;
+    return `${m} Min.`;
+  }
+  if (locale === "ar") {
+    if (h > 0) return `${h} س ${rem} د`;
+    return `${m} د`;
+  }
+  if (locale === "fr") {
+    if (h > 0) return `${h} h ${rem} min`;
+    return `${m} min`;
+  }
+  if (locale === "it" || locale === "es" || locale === "pt" || locale === "nl" || locale === "pl" || locale === "tr") {
+    if (h > 0) return `${h} h ${rem} min`;
+    return `${m} min`;
+  }
+  if (h > 0) return `${h}h ${rem}m`;
+  return `${m} min`;
 }

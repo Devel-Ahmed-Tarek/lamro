@@ -13,6 +13,7 @@ import {
 } from "@/lib/auth-api";
 import { pickCopy, type Copy, type Locale } from "@/lib/catalog";
 import { clearCartRequest, fetchCart, syncCart, upsertCartItem } from "@/lib/commerce-api";
+import { enrichCopy } from "@/lib/i18n/public-dict";
 
 export type Role = "customer" | "seller" | "admin";
 
@@ -276,7 +277,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<StoreValue>(() => ({
     locale,
     setLocale: setLocaleState,
-    t: (copy) => pickCopy(copy, locale),
+    t: (copy) => pickCopy(enrichCopy(copy), locale),
     role,
     setRole: setRoleState,
     authUser,

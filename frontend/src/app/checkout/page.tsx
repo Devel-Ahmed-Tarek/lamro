@@ -139,7 +139,7 @@ export default function CheckoutPage() {
                   <label key={method.id} className="flex justify-between rounded-xl border border-line bg-white px-4 py-3 text-sm">
                     <span className="flex items-center gap-2">
                       <input type="radio" name="ship" checked={methodId === method.id} onChange={() => setMethodId(method.id)} />
-                      {locale === "de" ? method.name.de : method.name.en}
+                      {t(method.name)}
                     </span>
                     <span>{formatMoney(method.price, locale)}</span>
                   </label>

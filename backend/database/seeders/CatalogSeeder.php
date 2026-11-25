@@ -13,12 +13,36 @@ class CatalogSeeder extends Seeder
     public function run(): void
     {
         $categories = [
-            ['slug' => 'drives', 'name' => ['de' => 'Antriebe & Umrichter', 'en' => 'Drives & inverters'], 'sort' => 1],
-            ['slug' => 'plc', 'name' => ['de' => 'Steuerungen', 'en' => 'PLCs'], 'sort' => 2],
-            ['slug' => 'hmi', 'name' => ['de' => 'Bedienpanels', 'en' => 'HMI panels'], 'sort' => 3],
-            ['slug' => 'switchgear', 'name' => ['de' => 'Schaltgeräte', 'en' => 'Switchgear'], 'sort' => 4],
-            ['slug' => 'servo', 'name' => ['de' => 'Servo & CNC', 'en' => 'Servo & CNC'], 'sort' => 5],
-            ['slug' => 'spares', 'name' => ['de' => 'Ersatzteile', 'en' => 'Spare parts'], 'sort' => 6],
+            ['slug' => 'drives', 'name' => [
+                'ar' => 'محركات ومحولات تردد', 'de' => 'Antriebe & Umrichter', 'en' => 'Drives & inverters',
+                'fr' => 'Entraînements & variateurs', 'it' => 'Azionamenti e inverter', 'es' => 'Accionamientos y variadores',
+                'tr' => 'Sürücüler ve invertörler', 'nl' => 'Aandrijvingen & omvormers', 'pl' => 'Napędy i falowniki', 'pt' => 'Acionamentos e inversores',
+            ], 'sort' => 1],
+            ['slug' => 'plc', 'name' => [
+                'ar' => 'وحدات التحكم PLC', 'de' => 'Steuerungen', 'en' => 'PLCs',
+                'fr' => 'Automates (PLC)', 'it' => 'PLC', 'es' => 'PLCs',
+                'tr' => 'PLC’ler', 'nl' => 'PLC’s', 'pl' => 'Sterowniki PLC', 'pt' => 'PLCs',
+            ], 'sort' => 2],
+            ['slug' => 'hmi', 'name' => [
+                'ar' => 'لوحات تشغيل HMI', 'de' => 'Bedienpanels', 'en' => 'HMI panels',
+                'fr' => 'Pupitres HMI', 'it' => 'Pannelli HMI', 'es' => 'Paneles HMI',
+                'tr' => 'HMI panelleri', 'nl' => 'HMI-panelen', 'pl' => 'Panele HMI', 'pt' => 'Painéis HMI',
+            ], 'sort' => 3],
+            ['slug' => 'switchgear', 'name' => [
+                'ar' => 'أجهزة التوزيع والتحكم', 'de' => 'Schaltgeräte', 'en' => 'Switchgear',
+                'fr' => 'Appareillage', 'it' => 'Apparecchiature di manovra', 'es' => 'Aparamenta',
+                'tr' => 'Şalt ekipmanı', 'nl' => 'Schakelmateriaal', 'pl' => 'Aparatura łączeniowa', 'pt' => 'Aparelhagem',
+            ], 'sort' => 4],
+            ['slug' => 'servo', 'name' => [
+                'ar' => 'سيرفو و CNC', 'de' => 'Servo & CNC', 'en' => 'Servo & CNC',
+                'fr' => 'Servo & CNC', 'it' => 'Servo e CNC', 'es' => 'Servo y CNC',
+                'tr' => 'Servo ve CNC', 'nl' => 'Servo & CNC', 'pl' => 'Servo i CNC', 'pt' => 'Servo e CNC',
+            ], 'sort' => 5],
+            ['slug' => 'spares', 'name' => [
+                'ar' => 'قطع الغيار', 'de' => 'Ersatzteile', 'en' => 'Spare parts',
+                'fr' => 'Pièces détachées', 'it' => 'Ricambi', 'es' => 'Repuestos',
+                'tr' => 'Yedek parçalar', 'nl' => 'Reserveonderdelen', 'pl' => 'Części zamienne', 'pt' => 'Peças sobresselentes',
+            ], 'sort' => 6],
         ];
 
         foreach ($categories as $category) {
