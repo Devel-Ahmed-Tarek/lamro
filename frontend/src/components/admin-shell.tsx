@@ -2,32 +2,42 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AdminNotificationBell } from "@/components/admin-notification-bell";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
 import { useStore } from "@/lib/store";
 
 export type AdminNavItem = { href: string; label: string; permission: string };
-export type AdminNavGroup = { title: string; items: AdminNavItem[] };
+export type AdminNavGroup = { id: string; title: string; items: AdminNavItem[] };
+
+function itemActive(pathname: string, href: string) {
+  return pathname === href || (href !== "/admin" && pathname.startsWith(`${href}/`));
+}
+
+function groupContainsPath(group: AdminNavGroup, pathname: string) {
+  return group.items.some((item) => itemActive(pathname, item.href));
+}
 
 export function useAdminNavGroups(): AdminNavGroup[] {
   const { t, can } = useStore();
 
   const groups: AdminNavGroup[] = [
     {
+      id: "start",
       title: t({ de: "Start", en: "Start" }),
       items: [
         { href: "/admin", label: t({ de: "Übersicht", en: "Overview" }), permission: "admin.overview" },
-        { href: "/admin/features", label: t({ de: "Funktionen", en: "Features" }), permission: "admin.features" },
         { href: "/admin/profile", label: t({ de: "Profil", en: "Profile" }), permission: "admin.profile" },
       ],
     },
     {
+      id: "content",
       title: t({ de: "Inhalt", en: "Content" }),
       items: [{ href: "/admin/cms", label: t({ de: "Inhalte", en: "CMS" }), permission: "admin.cms" }],
     },
     {
+      id: "catalog",
       title: t({ de: "Katalog", en: "Catalog" }),
       items: [
         { href: "/admin/products", label: t({ de: "Artikel", en: "Products" }), permission: "admin.products" },
@@ -37,6 +47,7 @@ export function useAdminNavGroups(): AdminNavGroup[] {
       ],
     },
     {
+      id: "access",
       title: t({ de: "Zugang", en: "Access" }),
       items: [
         { href: "/admin/team", label: t({ de: "Team", en: "Team" }), permission: "admin.staff" },
@@ -44,6 +55,7 @@ export function useAdminNavGroups(): AdminNavGroup[] {
       ],
     },
     {
+      id: "trading",
       title: t({ de: "Handel", en: "Trading" }),
       items: [
         { href: "/admin/auctions", label: t({ de: "Auktionen", en: "Auctions" }), permission: "admin.auctions" },
@@ -53,17 +65,18 @@ export function useAdminNavGroups(): AdminNavGroup[] {
       ],
     },
     {
+      id: "operations",
       title: t({ de: "Betrieb", en: "Operations" }),
       items: [
         { href: "/admin/orders", label: t({ de: "Bestellungen", en: "Orders" }), permission: "admin.orders" },
         { href: "/admin/returns", label: t({ de: "Retouren", en: "Returns" }), permission: "admin.orders" },
         { href: "/admin/payments", label: t({ de: "Zahlungen", en: "Payments" }), permission: "admin.payments" },
-        { href: "/admin/stripe", label: t({ de: "Stripe", en: "Stripe" }), permission: "admin.payments" },
         { href: "/admin/invoices", label: t({ de: "Rechnungen", en: "Invoices" }), permission: "admin.invoices" },
         { href: "/admin/messages", label: t({ de: "Nachrichten", en: "Messages" }), permission: "admin.messages" },
       ],
     },
     {
+      id: "insights",
       title: t({ de: "Auswertung", en: "Insights" }),
       items: [
         { href: "/admin/reports", label: t({ de: "Berichte", en: "Reports" }), permission: "admin.reports" },
@@ -71,11 +84,14 @@ export function useAdminNavGroups(): AdminNavGroup[] {
       ],
     },
     {
+      id: "settings",
       title: t({ de: "Einstellungen", en: "Settings" }),
       items: [
+        { href: "/admin/features", label: t({ de: "Funktionen", en: "Features" }), permission: "admin.features" },
         { href: "/admin/shipping", label: t({ de: "Versand", en: "Shipping" }), permission: "admin.shipping" },
         { href: "/admin/commissions", label: t({ de: "Provisionen", en: "Commissions" }), permission: "admin.commissions" },
         { href: "/admin/notifications", label: t({ de: "Benachrichtigungen", en: "Notifications" }), permission: "admin.notifications" },
+        { href: "/admin/stripe", label: t({ de: "Stripe", en: "Stripe" }), permission: "admin.payments" },
         { href: "/admin/ai", label: t({ en: "AI agent" }), permission: "admin.system" },
         { href: "/admin/system", label: t({ de: "System & Sicherung", en: "System & backup" }), permission: "admin.system" },
       ],
@@ -97,33 +113,79 @@ export function useAdminNavGroups(): AdminNavGroup[] {
 
 function NavList({ groups, onNavigate }: { groups: AdminNavGroup[]; onNavigate?: () => void }) {
   const pathname = usePathname();
+  const [openIds, setOpenIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const activeId = groups.find((group) => groupContainsPath(group, pathname))?.id;
+    if (!activeId) return;
+    setOpenIds((prev) => (prev.includes(activeId) ? prev : [...prev, activeId]));
+  }, [pathname, groups]);
+
+  function toggle(id: string) {
+    setOpenIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  }
 
   return (
-    <nav className="space-y-6">
-      {groups.map((group) => (
-        <div key={group.title}>
-          <p className="px-3 text-[11px] font-semibold tracking-[0.14em] text-muted uppercase">{group.title}</p>
-          <ul className="mt-2 space-y-1">
-            {group.items.map((item) => {
-              const active = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(`${item.href}/`));
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={onNavigate}
-                    className={cn(
-                      "block rounded-xl px-3 py-2 text-sm transition",
-                      active ? "bg-ink font-medium text-white" : "text-ink/75 hover:bg-paper hover:text-ink",
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
+    <nav className="space-y-1">
+      {groups.map((group) => {
+        const open = openIds.includes(group.id);
+        const sectionActive = groupContainsPath(group, pathname);
+
+        return (
+          <div key={group.id} className="rounded-2xl">
+            <button
+              type="button"
+              onClick={() => toggle(group.id)}
+              aria-expanded={open}
+              className={cn(
+                "flex w-full items-center justify-between gap-2 rounded-2xl px-3 py-2.5 text-left text-sm font-medium transition",
+                sectionActive ? "bg-paper text-ink" : "text-ink/80 hover:bg-paper hover:text-ink",
+              )}
+            >
+              <span>{group.title}</span>
+              <span
+                aria-hidden
+                className={cn(
+                  "grid h-5 w-5 place-items-center rounded-full text-[10px] text-muted transition-transform duration-200",
+                  open && "rotate-180",
+                  sectionActive && "text-copper",
+                )}
+              >
+                ▾
+              </span>
+            </button>
+
+            <div
+              className={cn(
+                "grid transition-[grid-template-rows] duration-200 ease-out",
+                open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+              )}
+            >
+              <div className="overflow-hidden">
+                <ul className="mt-1 mb-2 ml-2 space-y-0.5 border-l border-line pl-2">
+                  {group.items.map((item) => {
+                    const active = itemActive(pathname, item.href);
+                    return (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          onClick={onNavigate}
+                          className={cn(
+                            "block rounded-xl px-3 py-2 text-sm transition",
+                            active ? "bg-ink font-medium text-white" : "text-ink/70 hover:bg-paper hover:text-ink",
+                          )}
+                        >
+                          {item.label}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </nav>
   );
 }
@@ -179,7 +241,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <AdminNotificationBell />
             </div>
             <p className="px-3 text-xs font-semibold tracking-[0.14em] text-copper uppercase">{t({ de: "Verwaltung", en: "Admin" })}</p>
-            <div className="mt-5 max-h-[calc(100vh-12rem)] overflow-y-auto pr-1">
+            <div className="mt-4 max-h-[calc(100vh-12rem)] overflow-y-auto pr-1">
               <NavList groups={groups} />
             </div>
           </div>
