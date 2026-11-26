@@ -13,6 +13,8 @@ class CmsPage extends Model
         return [
             'title' => 'array',
             'body' => 'array',
+            'meta_title' => 'array',
+            'meta_description' => 'array',
         ];
     }
 }
