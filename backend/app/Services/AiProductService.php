@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AiSetting;
 use App\Support\Locales;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -10,14 +11,14 @@ use Illuminate\Validation\ValidationException;
 
 class AiProductService
 {
+    public function settings(): AiSetting
+    {
+        return AiSetting::current();
+    }
+
     public function provider(): string
     {
-        $configured = strtolower((string) config('services.ai.provider', 'demo'));
-        if (in_array($configured, ['groq', 'gemini', 'openai'], true) && $this->apiKey($configured)) {
-            return $configured;
-        }
-
-        return 'demo';
+        return $this->settings()->resolvedProvider();
     }
 
     public function demoMode(): bool
@@ -276,13 +277,13 @@ class AiProductService
                 'groq' => $this->chatJson(
                     'https://api.groq.com/openai/v1/chat/completions',
                     $this->apiKey('groq'),
-                    (string) config('services.ai.groq_model', 'llama-3.1-8b-instant'),
+                    $this->model('groq'),
                     (string) $prompt,
                 ),
                 default => $this->chatJson(
                     'https://api.openai.com/v1/chat/completions',
                     $this->apiKey('openai'),
-                    (string) config('services.ai.openai_model', 'gpt-4o-mini'),
+                    $this->model('openai'),
                     (string) $prompt,
                 ),
             };
@@ -385,7 +386,7 @@ class AiProductService
         return $this->draftViaChatCompletions(
             'https://api.groq.com/openai/v1/chat/completions',
             $this->apiKey('groq'),
-            (string) config('services.ai.groq_model', 'llama-3.1-8b-instant'),
+            $this->model('groq'),
             $description,
             $sourceLocale,
         );
@@ -397,7 +398,7 @@ class AiProductService
         return $this->draftViaChatCompletions(
             'https://api.openai.com/v1/chat/completions',
             $this->apiKey('openai'),
-            (string) config('services.ai.openai_model', 'gpt-4o-mini'),
+            $this->model('openai'),
             $description,
             $sourceLocale,
         );
@@ -407,7 +408,7 @@ class AiProductService
     private function draftViaGemini(string $description, string $sourceLocale): array
     {
         $key = $this->apiKey('gemini');
-        $model = (string) config('services.ai.gemini_model', 'gemini-2.0-flash');
+        $model = $this->model('gemini');
         $prompt = $this->draftPrompt($description, $sourceLocale);
         $response = Http::timeout(60)
             ->withQueryParameters(['key' => $key])
@@ -488,13 +489,13 @@ class AiProductService
                 'groq' => $this->chatJson(
                     'https://api.groq.com/openai/v1/chat/completions',
                     $this->apiKey('groq'),
-                    (string) config('services.ai.groq_model', 'llama-3.1-8b-instant'),
+                    $this->model('groq'),
                     (string) $prompt,
                 ),
                 default => $this->chatJson(
                     'https://api.openai.com/v1/chat/completions',
                     $this->apiKey('openai'),
-                    (string) config('services.ai.openai_model', 'gpt-4o-mini'),
+                    $this->model('openai'),
                     (string) $prompt,
                 ),
             };
@@ -522,7 +523,7 @@ class AiProductService
     private function geminiJson(string $prompt): array
     {
         $key = $this->apiKey('gemini');
-        $model = (string) config('services.ai.gemini_model', 'gemini-2.0-flash');
+        $model = $this->model('gemini');
         $response = Http::timeout(90)
             ->withQueryParameters(['key' => $key])
             ->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent", [
@@ -653,11 +654,11 @@ PROMPT;
 
     private function apiKey(string $provider): string
     {
-        return match ($provider) {
-            'groq' => (string) config('services.ai.groq_key', ''),
-            'gemini' => (string) config('services.ai.gemini_key', ''),
-            'openai' => (string) config('services.ai.openai_key', ''),
-            default => '',
-        };
+        return $this->settings()->keyFor($provider);
+    }
+
+    private function model(string $provider): string
+    {
+        return $this->settings()->modelFor($provider);
     }
 }

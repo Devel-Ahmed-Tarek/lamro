@@ -76,6 +76,7 @@ export function useAdminNavGroups(): AdminNavGroup[] {
         { href: "/admin/shipping", label: t({ de: "Versand", en: "Shipping" }), permission: "admin.shipping" },
         { href: "/admin/commissions", label: t({ de: "Provisionen", en: "Commissions" }), permission: "admin.commissions" },
         { href: "/admin/notifications", label: t({ de: "Benachrichtigungen", en: "Notifications" }), permission: "admin.notifications" },
+        { href: "/admin/ai", label: t({ en: "AI agent" }), permission: "admin.system" },
         { href: "/admin/system", label: t({ de: "System & Sicherung", en: "System & backup" }), permission: "admin.system" },
       ],
     },

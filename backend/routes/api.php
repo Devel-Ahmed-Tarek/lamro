@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\AiProductController;
 use App\Http\Controllers\Api\V1\CompanyStockListingController;
 use App\Http\Controllers\Api\V1\StripeController;
+use App\Http\Controllers\Api\V1\AiSettingsController;
 use App\Http\Controllers\Api\V1\StripeSettingsController;
 use App\Http\Controllers\Api\V1\CmsController;
 use App\Http\Controllers\Api\V1\ReportsController;
@@ -276,6 +277,9 @@ Route::prefix('v1')->group(function () {
                 Route::get('/system/status', [SystemController::class, 'status']);
                 Route::get('/system/backups', [SystemController::class, 'listBackups']);
                 Route::post('/system/backups', [SystemController::class, 'runBackup']);
+                Route::get('/ai-settings', [AiSettingsController::class, 'show']);
+                Route::put('/ai-settings', [AiSettingsController::class, 'update']);
+                Route::post('/ai-settings/test', [AiSettingsController::class, 'test']);
             });
         });
     });
